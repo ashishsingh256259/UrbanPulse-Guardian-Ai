@@ -1,6 +1,6 @@
 // ===== URBANPULSE v2 - CORE JS =====
 // Use localhost for local development, or your deployed backend URL for production
-const API = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' 
+const API = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' || window.location.protocol === 'file:'
     ? 'http://localhost:8002' 
     : 'https://your-backend-production-url.com'; // <-- UPDATE THIS when deploying backend
 
