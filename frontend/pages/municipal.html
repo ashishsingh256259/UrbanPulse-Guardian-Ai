@@ -274,7 +274,7 @@
           <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:800;">${issueEmoji(r.issue_type)} Issue Details — #${r.id?.slice(-6)}</div>
           <button onclick="closeDetail('${context}')" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1.2rem;">✕</button>
         </div>
-        ${r.image_url ? `<img src="${r.image_url.startsWith('http')?r.image_url:'https://placehold.co/600x220/0d1120/7a8ba6?text=Report+Photo'}" class="detail-img" onerror="this.src='https://placehold.co/600x220/0d1120/7a8ba6?text=Report+Photo'"/>` : ''}
+        ${r.image_url ? `<img src="${r.image_url.startsWith('http')?r.image_url: API + r.image_url}" class="detail-img" onerror="this.src='https://placehold.co/600x220/0d1120/7a8ba6?text=Report+Photo'"/>` : ''}
         <div class="detail-grid">
           <div class="detail-item"><label>Issue Type</label><span>${(r.issue_type||'').replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}</span></div>
           <div class="detail-item"><label>Severity</label><span>${riskBadge(r.risk_score||0)}</span></div>

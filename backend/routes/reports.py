@@ -106,7 +106,7 @@ async def create_report(
     filename = f"{uuid.uuid4()}.jpg"
     image_path = f"uploads/{filename}"
     with open(image_path, "wb") as f: f.write(img_bytes)
-    image_url = f"http://localhost:8002/{image_path}"
+    image_url = f"/{image_path}"
 
     detected, confidence, severity = analyze_image_with_ai(image_path, issue_type)
     risk = calc_risk(detected, severity, lat, lng)
@@ -258,7 +258,7 @@ async def resolve_report(
     os.makedirs("uploads", exist_ok=True)
     filename = f"resolved_{uuid.uuid4()}.jpg"
     with open(f"uploads/{filename}", "wb") as f: f.write(img_bytes)
-    resolved_url = f"http://localhost:8002/uploads/{filename}"
+    resolved_url = f"/uploads/{filename}"
 
     report = await db.reports.find_one({"_id": ObjectId(report_id)})
     if not report: raise HTTPException(404, "Report not found")
