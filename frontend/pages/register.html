@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Register - UrbanPulse Guardian AI</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-box" style="max-width:480px;">
+      <div class="auth-logo">
+        <div class="logo-icon">🏙️</div>
+        <h1>UrbanPulse <span style="color:var(--cyan)">Guardian</span></h1>
+        <p>Create your citizen account</p>
+      </div>
+      <div class="auth-card">
+        <h2>Join as Guardian 🚀</h2>
+        <p class="sub">Free forever. Start earning points today.</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">First Name</label>
+            <input class="form-input" type="text" id="fname" placeholder="Anmol"/>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Last Name</label>
+            <input class="form-input" type="text" id="lname" placeholder="Mishra"/>
+          </div>
+        </div>
+        <div style="height:14px;"></div>
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input class="form-input" type="email" id="email" placeholder="you@example.com"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          <input class="form-input" type="tel" id="phone" placeholder="+91 98765 43210"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">City</label>
+          <select class="form-select" id="city">
+            <option value="">Select your city</option>
+            <option>Delhi</option><option>Mumbai</option><option>Bangalore</option>
+            <option>Chennai</option><option>Hyderabad</option><option>Pune</option>
+            <option>Noida</option><option>Gurgaon</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" type="password" id="password" placeholder="Min 8 characters"/>
+        </div>
+
+        <div class="form-error" id="err-global" style="margin-bottom:12px;font-size:0.85rem;"></div>
+
+        <button class="btn btn-primary btn-full" id="regBtn" onclick="handleRegister()">
+          Create Account
+        </button>
+        <p style="font-size:0.72rem;color:var(--text2);text-align:center;margin-top:10px;">
+          By signing up you agree to our Terms of Service
+        </p>
+        <div class="auth-switch">Already have an account? <a href="/pages/login.html">Sign in →</a></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/app.js"></script>
+  <script>
+    redirectIfLoggedIn();
+
+    async function handleRegister() {
+      const fname = document.getElementById('fname').value.trim();
+      const lname = document.getElementById('lname').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const city  = document.getElementById('city').value;
+      const pass  = document.getElementById('password').value;
+      const btn   = document.getElementById('regBtn');
+      const errG  = document.getElementById('err-global');
+      errG.style.display = 'none';
+
+      if (!fname || !lname || !email || !pass) {
+        errG.textContent = 'Please fill all required fields'; errG.style.display = 'block'; return;
+      }
+      if (pass.length < 8) {
+        errG.textContent = 'Password must be at least 8 characters'; errG.style.display = 'block'; return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;margin:0 auto"></div>';
+
+      try {
+        const data = await apiCall('/auth/register', 'POST', { first_name: fname, last_name: lname, email, phone, city, password: pass });
+        setAuth(data.access_token, data.user);
+        toast('success', '🎉 Welcome!', 'Account created successfully');
+        setTimeout(() => { window.location.href = '/pages/dashboard.html'; }, 800);
+      } catch(e) {
+        errG.textContent = e.message || 'Registration failed';
+        errG.style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = 'Create Account';
+      }
+    }
+  </script>
+</body>
+</html>

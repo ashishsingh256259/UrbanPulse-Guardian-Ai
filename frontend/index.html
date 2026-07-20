@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>UrbanPulse Guardian AI</title>
+  <link rel="stylesheet" href="css/main.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    /* Hero */
+    .hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:100px 24px 60px;position:relative;overflow:hidden;}
+    .hero-bg{position:absolute;inset:0;z-index:0;}
+    .grid-lines{position:absolute;inset:0;background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);background-size:60px 60px;}
+    .glow-orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:0.12;}
+    .orb1{width:500px;height:500px;background:var(--cyan);top:-100px;left:50%;transform:translateX(-50%);}
+    .orb2{width:300px;height:300px;background:var(--purple);bottom:0;right:10%;}
+    .hero-content{position:relative;z-index:1;max-width:780px;}
+    .hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:20px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.2);color:var(--cyan);font-size:0.78rem;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:28px;}
+    .hero-badge .dot{animation:blink 1.5s ease-in-out infinite;}
+    .hero h1{font-family:var(--font-display);font-size:clamp(2.8rem,6vw,5rem);font-weight:800;line-height:1.05;letter-spacing:-0.03em;margin-bottom:24px;}
+    .hero h1 .grad{background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .hero-desc{color:var(--text2);font-size:1.1rem;line-height:1.7;max-width:560px;margin:0 auto 40px;}
+    .hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+    .hero-stats{display:flex;gap:40px;justify-content:center;margin-top:60px;flex-wrap:wrap;}
+    .hero-stat .num{font-family:var(--font-display);font-size:2rem;font-weight:800;color:var(--text);}
+    .hero-stat .lbl{font-size:0.78rem;color:var(--text2);margin-top:2px;}
+
+    /* How it works */
+    .section{padding:80px 0;}
+    .section-tag{display:inline-block;padding:4px 14px;border-radius:20px;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);color:var(--purple);font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:16px;}
+    .section-title{font-family:var(--font-display);font-size:clamp(1.8rem,3vw,2.6rem);font-weight:800;letter-spacing:-0.02em;margin-bottom:12px;}
+    .section-sub{color:var(--text2);font-size:1rem;max-width:500px;}
+    .steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:48px;}
+    .step-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:28px;position:relative;transition:all 0.3s;}
+    .step-card:hover{transform:translateY(-4px);border-color:rgba(0,212,255,0.12);}
+    .step-num{font-family:var(--font-display);font-size:2.5rem;font-weight:800;color:rgba(0,212,255,0.1);position:absolute;top:16px;right:20px;}
+    .step-icon{font-size:2rem;margin-bottom:16px;}
+    .step-card h3{font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:8px;}
+    .step-card p{font-size:0.85rem;color:var(--text2);line-height:1.6;}
+
+    /* Features */
+    .features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:48px;}
+    .feature-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:28px;transition:all 0.3s;}
+    .feature-card:hover{transform:translateY(-3px);}
+    .feature-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin-bottom:16px;}
+    .feature-card h3{font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:8px;}
+    .feature-card p{font-size:0.85rem;color:var(--text2);line-height:1.6;}
+
+    /* CTA */
+    .cta-section{background:linear-gradient(135deg,rgba(0,212,255,0.05),rgba(139,92,246,0.05));border:1px solid var(--border);border-radius:24px;padding:64px;text-align:center;margin:80px 0;}
+    .cta-section h2{font-family:var(--font-display);font-size:clamp(1.8rem,3vw,2.8rem);font-weight:800;margin-bottom:16px;}
+    .cta-section p{color:var(--text2);font-size:1rem;margin-bottom:36px;}
+
+    /* Footer */
+    footer{border-top:1px solid var(--border);padding:40px 0 24px;}
+    .footer-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
+    .footer-brand{font-family:var(--font-display);font-weight:700;display:flex;align-items:center;gap:8px;}
+    .footer-copy{font-size:0.8rem;color:var(--text2);}
+  </style>
+</head>
+<body>
+  <nav class="nav" id="main-nav"></nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="grid-lines"></div>
+      <div class="glow-orb orb1"></div>
+      <div class="glow-orb orb2"></div>
+    </div>
+    <div class="hero-content">
+      <div class="hero-badge"><span class="dot dot-green"></span> AI-Powered Urban Intelligence</div>
+      <h1>Your City.<br><span class="grad">Smarter.</span> Safer.<br>Faster.</h1>
+      <p class="hero-desc">Report urban issues in seconds. Our AI detects, scores risk, and alerts authorities — before small problems become big crises.</p>
+      <div class="hero-btns">
+        <a href="/pages/register.html" class="btn btn-primary btn-lg">
+          <i class="fa-solid fa-camera"></i> Report an Issue
+        </a>
+        <a href="/pages/heatmap.html" class="btn btn-ghost btn-lg">
+          <i class="fa-solid fa-map"></i> View City Map
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="num" data-count="12847">0</div><div class="lbl">Issues Resolved</div></div>
+        <div class="hero-stat"><div class="num" data-count="94">0</div><div class="lbl">AI Accuracy %</div></div>
+        <div class="hero-stat"><div class="num" data-count="328">0</div><div class="lbl">Active Citizens</div></div>
+        <div class="hero-stat"><div class="num" data-count="48">0</div><div class="lbl">Hrs Avg Resolution</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="section" style="background:var(--bg-card2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+    <div class="container">
+      <div class="section-tag">How It Works</div>
+      <div class="section-title">From Photo to Fix in 4 Steps</div>
+      <p class="section-sub">Our AI pipeline handles everything — you just snap and submit.</p>
+      <div class="steps-grid">
+        <div class="step-card"><div class="step-num">01</div><div class="step-icon">📸</div><h3>Snap & Submit</h3><p>Take a photo of the issue. GPS auto-tags location. Submit in one tap.</p></div>
+        <div class="step-card"><div class="step-num">02</div><div class="step-icon">🤖</div><h3>AI Detection</h3><p>YOLOv8 identifies issue type and severity with up to 96% accuracy.</p></div>
+        <div class="step-card"><div class="step-num">03</div><div class="step-icon">📊</div><h3>Risk Scoring</h3><p>Random Forest calculates priority based on location, population, and facilities.</p></div>
+        <div class="step-card"><div class="step-num">04</div><div class="step-icon">🏛️</div><h3>Authority Alerted</h3><p>Municipality gets real-time priority queue. Teams dispatched. Issue resolved.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section">
+    <div class="container">
+      <div class="section-tag">Platform Features</div>
+      <div class="section-title">Everything Your City Needs</div>
+      <div class="features-grid">
+        <div class="feature-card"><div class="feature-icon" style="background:rgba(0,212,255,0.1);color:var(--cyan)">🗺️</div><h3>Live City Heatmap</h3><p>Real-time map with layered overlays for road damage, flooding, garbage, and streetlight failures.</p></div>
+        <div class="feature-card"><div class="feature-icon" style="background:rgba(255,61,90,0.1);color:var(--red)">🌊</div><h3>Flood Prediction</h3><p>XGBoost model predicts flood probability 48 hours in advance using weather and drainage data.</p></div>
+        <div class="feature-card"><div class="feature-icon" style="background:rgba(139,92,246,0.1);color:var(--purple)">🏛️</div><h3>Municipal Dashboard</h3><p>AI-ranked priority queue, workforce allocation, and real-time resolution tracking.</p></div>
+        <div class="feature-card"><div class="feature-icon" style="background:rgba(251,191,36,0.1);color:var(--yellow)">🏆</div><h3>Citizen Rewards</h3><p>Earn points for every valid report. Climb from Bronze to Gold Guardian on the leaderboard.</p></div>
+        <div class="feature-card"><div class="feature-icon" style="background:rgba(16,212,142,0.1);color:var(--green)">✅</div><h3>Resolution Tracking</h3><p>Track your report from submission to resolution. Get notified when the issue is fixed.</p></div>
+        <div class="feature-card"><div class="feature-icon" style="background:rgba(255,107,53,0.1);color:var(--orange)">📱</div><h3>Mobile Friendly</h3><p>Fully responsive. Works on any device. Report issues directly from your phone camera.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="section">
+    <div class="container">
+      <div class="cta-section">
+        <h2>Ready to Make Your City Better?</h2>
+        <p>Join thousands of citizens reporting issues and earning rewards.</p>
+        <div class="hero-btns">
+          <a href="/pages/register.html" class="btn btn-primary btn-lg">Get Started Free</a>
+          <a href="/pages/login.html" class="btn btn-ghost btn-lg">Login</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">🏙️ UrbanPulse <span style="color:var(--cyan)">Guardian AI</span></div>
+        <div class="footer-copy">© 2024 UrbanPulse Guardian AI. Built for smarter cities.</div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    buildNav('');
+    // Counter animation
+    const counters = document.querySelectorAll('[data-count]');
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (!e.isIntersecting || e.target.dataset.animated) return;
+        e.target.dataset.animated = true;
+        const target = parseInt(e.target.dataset.count);
+        let cur = 0; const step = target / 60;
+        const t = setInterval(() => {
+          cur = Math.min(cur + step, target);
+          e.target.textContent = Math.floor(cur).toLocaleString();
+          if (cur >= target) clearInterval(t);
+        }, 20);
+      });
+    }, { threshold: 0.5 });
+    counters.forEach(c => obs.observe(c));
+  </script>
+</body>
+</html>

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Municipal Dashboard - UrbanPulse Guardian AI</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    .muni-layout{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - var(--nav-h));margin-top:var(--nav-h);}
+    .sidebar{background:var(--bg-card2);border-right:1px solid var(--border);padding:24px 0;position:sticky;top:var(--nav-h);height:calc(100vh - var(--nav-h));overflow-y:auto;}
+    .sidebar-section{padding:0 16px;margin-bottom:24px;}
+    .sidebar-label{font-size:0.68rem;font-weight:700;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;padding:0 8px;}
+    .sidebar-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;transition:all 0.2s;font-size:0.85rem;font-weight:500;color:var(--text2);margin-bottom:2px;border:none;background:none;width:100%;text-align:left;}
+    .sidebar-item:hover{background:rgba(255,255,255,0.04);color:var(--text);}
+    .sidebar-item.active{background:rgba(0,212,255,0.08);color:var(--cyan);}
+    .sidebar-item .count{margin-left:auto;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:0.68rem;font-weight:700;}
+    .sidebar-item .count.yellow{background:var(--yellow);color:#000;}
+    .main-content{padding:28px;overflow-y:auto;}
+    .section-panel{display:none;}
+    .section-panel.active{display:block;}
+
+    /* Stats */
+    .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
+    .stat-box{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:20px;position:relative;overflow:hidden;}
+    .stat-box::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+    .stat-box.s1::after{background:var(--cyan);}
+    .stat-box.s2::after{background:var(--red);}
+    .stat-box.s3::after{background:var(--yellow);}
+    .stat-box.s4::after{background:var(--green);}
+    .stat-box .val{font-family:var(--font-display);font-size:2.2rem;font-weight:800;line-height:1;}
+    .stat-box .lbl{font-size:0.75rem;color:var(--text2);margin-top:6px;}
+
+    /* Report list */
+    .report-row{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:10px;display:flex;align-items:center;gap:14px;transition:all 0.2s;cursor:pointer;}
+    .report-row:hover{border-color:rgba(0,212,255,0.15);transform:translateX(2px);}
+    .report-row.selected{border-color:var(--cyan);background:rgba(0,212,255,0.03);}
+    .r-emoji{font-size:1.5rem;flex-shrink:0;}
+    .r-info{flex:1;min-width:0;}
+    .r-title{font-weight:600;font-size:0.9rem;}
+    .r-sub{font-size:0.75rem;color:var(--text2);margin-top:3px;}
+    .r-right{text-align:right;flex-shrink:0;}
+    .r-score{font-family:var(--font-display);font-size:1.4rem;font-weight:800;}
+
+    /* Detail panel */
+    .detail-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:24px;margin-top:20px;display:none;}
+    .detail-panel.open{display:block;}
+    .detail-img{width:100%;border-radius:10px;max-height:220px;object-fit:cover;border:1px solid var(--border);margin-bottom:16px;}
+    .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+    .detail-item{background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:12px;}
+    .detail-item label{font-size:0.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:4px;}
+    .detail-item span{font-size:0.88rem;font-weight:600;}
+    #miniMap{height:160px;border-radius:10px;overflow:hidden;margin-bottom:16px;border:1px solid var(--border);}
+
+    /* Upload resolve */
+    .resolve-zone{border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;}
+    .resolve-zone:hover{border-color:var(--green);background:rgba(16,212,142,0.03);}
+    .resolve-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+
+    .filter-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+    .ftab{padding:6px 16px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text2);font-size:0.8rem;font-weight:600;cursor:pointer;transition:all 0.2s;font-family:var(--font);}
+    .ftab.active{background:rgba(0,212,255,0.1);color:var(--cyan);border-color:rgba(0,212,255,0.3);}
+
+    @media(max-width:900px){
+      .muni-layout{grid-template-columns:1fr;}
+      .sidebar{position:static;height:auto;}
+      .stat-grid{grid-template-columns:1fr 1fr;}
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav" id="main-nav"></nav>
+
+  <div class="muni-layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <div style="padding:0 12px;margin-bottom:20px;">
+          <div style="font-size:0.7rem;color:var(--text2);">Logged in as</div>
+          <div style="font-weight:700;font-size:0.9rem;margin-top:2px;" id="muniName">Municipal Officer</div>
+          <div style="font-size:0.72rem;color:var(--cyan);margin-top:2px;" id="muniCity">—</div>
+        </div>
+        <div class="sidebar-label">Main</div>
+        <button class="sidebar-item active" onclick="showPanel('overview',this)">📊 Overview</button>
+        <button class="sidebar-item" onclick="showPanel('pending',this)">⏳ Pending Issues <span class="count" id="cnt-pending">0</span></button>
+        <button class="sidebar-item" onclick="showPanel('inprogress',this)">🔧 In Progress <span class="count yellow" id="cnt-progress">0</span></button>
+        <button class="sidebar-item" onclick="showPanel('resolved',this)">✅ Resolved</button>
+        <button class="sidebar-item" onclick="showPanel('critical',this)">🚨 Critical <span class="count" id="cnt-critical">0</span></button>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Tools</div>
+        <button class="sidebar-item" onclick="window.location.href='/pages/heatmap.html'">🗺️ City Heatmap</button>
+        <button class="sidebar-item" onclick="showPanel('priority',this)">📋 Priority Queue</button>
+      </div>
+      <div class="sidebar-section" style="margin-top:auto;">
+        <button class="sidebar-item" onclick="logout()" style="color:var(--red);">🚪 Logout</button>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+      <!-- OVERVIEW -->
+      <div class="section-panel active" id="panel-overview">
+        <div class="page-header"><h1>🏛️ Municipal Dashboard</h1><p>Real-time city issue management</p></div>
+        <div class="stat-grid">
+          <div class="stat-box s1"><div class="val" id="ov-total">—</div><div class="lbl">Total Reports</div></div>
+          <div class="stat-box s2"><div class="val" id="ov-critical">—</div><div class="lbl">Critical Issues</div></div>
+          <div class="stat-box s3"><div class="val" id="ov-pending">—</div><div class="lbl">Pending</div></div>
+          <div class="stat-box s4"><div class="val" id="ov-resolved">—</div><div class="lbl">Resolved</div></div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px;">
+          <div class="stat-box" style="padding: 16px;">
+            <div style="font-size: 0.9rem; font-weight: 700; margin-bottom: 12px; color: var(--text2);">Issues by Category</div>
+            <canvas id="categoryChart" style="max-height: 250px;"></canvas>
+          </div>
+          <div class="stat-box" style="padding: 16px;">
+            <div style="font-size: 0.9rem; font-weight: 700; margin-bottom: 12px; color: var(--text2);">Reports by Status</div>
+            <canvas id="statusChart" style="max-height: 250px;"></canvas>
+          </div>
+        </div>
+
+        <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:16px;">🤖 AI Priority Queue (Top 5)</div>
+        <div id="ov-queue"></div>
+      </div>
+
+      <!-- PENDING -->
+      <div class="section-panel" id="panel-pending">
+        <div class="page-header"><h1>⏳ Pending Issues</h1><p>All reports awaiting action — click any to view details and resolve</p></div>
+        <div class="filter-tabs">
+          <button class="ftab active" onclick="filterReports('all',this,'pending')">All</button>
+          <button class="ftab" onclick="filterReports('critical',this,'pending')">🔴 Critical</button>
+          <button class="ftab" onclick="filterReports('high',this,'pending')">🟠 High</button>
+          <button class="ftab" onclick="filterReports('pothole',this,'pending')">🕳️ Pothole</button>
+          <button class="ftab" onclick="filterReports('garbage',this,'pending')">🗑️ Garbage</button>
+          <button class="ftab" onclick="filterReports('waterlogging',this,'pending')">💧 Flood</button>
+        </div>
+        <div id="pending-list"></div>
+        <div class="detail-panel" id="pending-detail">
+          <div id="detail-content"></div>
+        </div>
+      </div>
+
+      <!-- IN PROGRESS -->
+      <div class="section-panel" id="panel-inprogress">
+        <div class="page-header"><h1>🔧 In Progress</h1><p>Issues currently being worked on</p></div>
+        <div id="inprogress-list"></div>
+        <div class="detail-panel" id="inprogress-detail"><div id="inprogress-detail-content"></div></div>
+      </div>
+
+      <!-- RESOLVED -->
+      <div class="section-panel" id="panel-resolved">
+        <div class="page-header"><h1>✅ Resolved Issues</h1><p>Successfully fixed issues with proof photos</p></div>
+        <div id="resolved-list"></div>
+      </div>
+
+      <!-- CRITICAL -->
+      <div class="section-panel" id="panel-critical">
+        <div class="page-header"><h1>🚨 Critical Issues</h1><p>Risk score ≥ 80 — requires immediate action</p></div>
+        <div id="critical-list"></div>
+        <div class="detail-panel" id="critical-detail"><div id="critical-detail-content"></div></div>
+      </div>
+
+      <!-- PRIORITY QUEUE -->
+      <div class="section-panel" id="panel-priority">
+        <div class="page-header"><h1>📋 AI Priority Queue</h1><p>Sorted by risk score — highest first</p></div>
+        <div id="priority-list"></div>
+        <div class="detail-panel" id="priority-detail"><div id="priority-detail-content"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="../js/app.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    if (!requireMunicipal()) {}
+    else { buildNav('municipal'); init(); }
+
+    let allReports = [], selectedReport = null, miniMapInstance = null;
+
+    async function init() {
+      const user = getUser();
+      document.getElementById('muniName').textContent = user?.name || 'Municipal Officer';
+      document.getElementById('muniCity').textContent = user?.city || '';
+      await loadAll();
+    }
+
+    async function loadAll() {
+      try {
+        const data = await apiCall('/api/reports/?limit=200');
+        allReports = data;
+        updateCounts();
+        renderOverview();
+        renderList('pending', ['pending'], 'pending-list');
+        renderList('inprogress', ['assigned','in_progress'], 'inprogress-list');
+        renderList('resolved', ['resolved'], 'resolved-list');
+        renderList('critical', null, 'critical-list', r => r.risk_score >= 80);
+        renderList('priority', null, 'priority-list', null, true);
+      } catch(e) { toast('error','Load Failed', e.message); }
+    }
+
+    function updateCounts() {
+      const pending  = allReports.filter(r=>r.status==='pending').length;
+      const progress = allReports.filter(r=>['assigned','in_progress'].includes(r.status)).length;
+      const critical = allReports.filter(r=>r.risk_score>=80&&r.status!=='resolved').length;
+      document.getElementById('cnt-pending').textContent  = pending;
+      document.getElementById('cnt-progress').textContent = progress;
+      document.getElementById('cnt-critical').textContent = critical;
+      document.getElementById('ov-total').textContent    = allReports.length;
+      document.getElementById('ov-critical').textContent = critical;
+      document.getElementById('ov-pending').textContent  = pending;
+      document.getElementById('ov-resolved').textContent = allReports.filter(r=>r.status==='resolved').length;
+    }
+
+    function renderOverview() {
+      const top5 = [...allReports].filter(r=>r.status!=='resolved').sort((a,b)=>(b.risk_score||0)-(a.risk_score||0)).slice(0,5);
+      document.getElementById('ov-queue').innerHTML = top5.length
+        ? top5.map((r,i)=>reportRowHTML(r,i+1,'overview')).join('')
+        : '<div class="empty-state"><div class="icon">✅</div><h3>All clear!</h3><p>No pending issues.</p></div>';
+    }
+
+    function renderList(context, statuses, elId, filterFn=null, sortByRisk=false) {
+      let list = statuses ? allReports.filter(r=>statuses.includes(r.status)) : allReports;
+      if (filterFn) list = list.filter(filterFn);
+      if (sortByRisk) list = [...list].sort((a,b)=>(b.risk_score||0)-(a.risk_score||0));
+      const el = document.getElementById(elId);
+      if (!el) return;
+      el.innerHTML = list.length
+        ? list.map((r,i)=>reportRowHTML(r,i+1,context)).join('')
+        : '<div class="empty-state"><div class="icon">✅</div><h3>Nothing here</h3><p>No issues in this category.</p></div>';
+    }
+
+    function reportRowHTML(r, rank, context) {
+      const rc = riskColor(r.risk_score||0);
+      return `<div class="report-row" id="row-${r.id}" onclick="selectReport('${r.id}','${context}')">
+        <div style="width:28px;text-align:center;font-family:var(--font-display);font-weight:800;font-size:0.85rem;color:var(--text2)">${rank}</div>
+        <div class="r-emoji">${issueEmoji(r.issue_type)}</div>
+        <div class="r-info">
+          <div class="r-title">${(r.issue_type||'').replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}${r.landmark?' — '+r.landmark:''}</div>
+          <div class="r-sub">${r.location?.address||'Location recorded'} · ${timeAgo(r.created_at)}</div>
+          <div style="margin-top:5px;">${statusBadge(r.status)} ${riskBadge(r.risk_score||0)}</div>
+        </div>
+        <div class="r-right">
+          <div class="r-score" style="color:${rc}">${Math.round(r.risk_score||0)}</div>
+          <div style="font-size:0.65rem;color:var(--text2)">risk score</div>
+        </div>
+      </div>`;
+    }
+
+    function selectReport(id, context) {
+      selectedReport = allReports.find(r=>r.id===id);
+      if (!selectedReport) return;
+
+      // Highlight row
+      document.querySelectorAll('.report-row').forEach(r=>r.classList.remove('selected'));
+      document.getElementById('row-'+id)?.classList.add('selected');
+
+      const panelMap = { overview:'pending-detail', pending:'pending-detail', inprogress:'inprogress-detail', critical:'critical-detail', priority:'priority-detail' };
+      const contentMap = { overview:'detail-content', pending:'detail-content', inprogress:'inprogress-detail-content', critical:'critical-detail-content', priority:'priority-detail-content' };
+      const panel = document.getElementById(panelMap[context]);
+      const contentEl = document.getElementById(contentMap[context]);
+      if (!panel || !contentEl) return;
+
+      const r = selectedReport;
+      const canResolve = r.status !== 'resolved';
+      const lat = r.location?.coordinates?.[1] || 28.6139;
+      const lng = r.location?.coordinates?.[0] || 77.2090;
+
+      contentEl.innerHTML = `
+        <div class="flex-between mb-16">
+          <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:800;">${issueEmoji(r.issue_type)} Issue Details — #${r.id?.slice(-6)}</div>
+          <button onclick="closeDetail('${context}')" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1.2rem;">✕</button>
+        </div>
+        ${r.image_url ? `<img src="${r.image_url.startsWith('http')?r.image_url:'https://placehold.co/600x220/0d1120/7a8ba6?text=Report+Photo'}" class="detail-img" onerror="this.src='https://placehold.co/600x220/0d1120/7a8ba6?text=Report+Photo'"/>` : ''}
+        <div class="detail-grid">
+          <div class="detail-item"><label>Issue Type</label><span>${(r.issue_type||'').replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}</span></div>
+          <div class="detail-item"><label>Severity</label><span>${riskBadge(r.risk_score||0)}</span></div>
+          <div class="detail-item"><label>Risk Score</label><span style="color:${riskColor(r.risk_score||0)};font-family:var(--font-display);font-size:1.3rem">${Math.round(r.risk_score||0)}/100</span></div>
+          <div class="detail-item"><label>Status</label><span>${statusBadge(r.status)}</span></div>
+          <div class="detail-item"><label>AI Confidence</label><span>${r.ai_confidence||'—'}%</span></div>
+          <div class="detail-item"><label>Submitted</label><span>${timeAgo(r.created_at)}</span></div>
+        </div>
+        ${r.description?`<div class="detail-item mb-16"><label>Description</label><span style="font-weight:400;color:var(--text2)">${r.description}</span></div>`:''}
+        ${r.landmark?`<div class="detail-item mb-16"><label>Landmark</label><span>${r.landmark}</span></div>`:''}
+        <div style="font-size:0.75rem;color:var(--text2);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Location</div>
+        <div id="miniMap-${r.id}" style="height:160px;border-radius:10px;overflow:hidden;margin-bottom:16px;border:1px solid var(--border);"></div>
+        ${canResolve ? `
+        <div class="divider-text">Mark as Resolved</div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="updateStatus('${r.id}','assigned')">👷 Assign Team</button>
+          <button class="btn btn-orange btn-sm" onclick="updateStatus('${r.id}','in_progress')">🔧 In Progress</button>
+        </div>
+        <div style="font-size:0.82rem;font-weight:600;margin-bottom:8px;">📸 Upload Resolved Photo (Required to mark resolved)</div>
+        <div class="resolve-zone" id="resolveZone-${r.id}">
+          <input type="file" accept="image/*" onchange="handleResolvePhoto('${r.id}', this)"/>
+          <div>📷 Click to upload proof photo</div>
+          <div style="font-size:0.75rem;color:var(--text2);margin-top:6px;">Photo confirms the issue has been fixed</div>
+        </div>
+        <div id="resolvePreview-${r.id}" style="display:none;margin-top:10px;">
+          <img id="resolveImg-${r.id}" style="width:100%;border-radius:10px;max-height:160px;object-fit:cover;border:1px solid var(--border);"/>
+          <button class="btn btn-success btn-full mt-12" onclick="markResolved('${r.id}')">✅ Mark as Resolved</button>
+        </div>
+        ` : `<div style="text-align:center;padding:16px;background:rgba(16,212,142,0.05);border:1px solid rgba(16,212,142,0.15);border-radius:10px;color:var(--green);font-weight:600;">✅ This issue has been resolved</div>`}
+      `;
+
+      panel.classList.add('open');
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      // Mini map
+      setTimeout(() => {
+        const mapEl = document.getElementById(`miniMap-${r.id}`);
+        if (!mapEl) return;
+        if (miniMapInstance) { miniMapInstance.remove(); miniMapInstance = null; }
+        miniMapInstance = L.map(`miniMap-${r.id}`, { zoomControl: false }).setView([lat, lng], 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CARTO' }).addTo(miniMapInstance);
+        L.marker([lat, lng]).addTo(miniMapInstance);
+      }, 100);
+    }
+
+    let resolvePhotoFile = null;
+    function handleResolvePhoto(id, input) {
+      const file = input.files[0]; if (!file) return;
+      resolvePhotoFile = file;
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById(`resolveImg-${id}`).src = e.target.result;
+        document.getElementById(`resolvePreview-${id}`).style.display = 'block';
+        document.getElementById(`resolveZone-${id}`).style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function markResolved(id) {
+      if (!resolvePhotoFile) { toast('warning','Photo Required','Upload a proof photo first'); return; }
+      const btn = event.target;
+      btn.disabled = true; btn.textContent = 'Resolving...';
+      try {
+        const fd = new FormData();
+        fd.append('resolved_photo', resolvePhotoFile);
+        fd.append('status', 'resolved');
+        await apiUpload(`/api/reports/${id}/resolve`, fd);
+        toast('success','✅ Resolved!','Issue marked as resolved');
+        resolvePhotoFile = null;
+        await loadAll();
+      } catch(e) { toast('error','Failed', e.message); btn.disabled=false; btn.textContent='✅ Mark as Resolved'; }
+    }
+
+    async function updateStatus(id, status) {
+      try {
+        await apiCall(`/api/reports/${id}/status`, 'PUT', { status });
+        toast('info','Status Updated', `Report marked as ${status.replace('_',' ')}`);
+        await loadAll();
+      } catch(e) { toast('error','Failed', e.message); }
+    }
+
+    function closeDetail(context) {
+      const panelMap = { overview:'pending-detail', pending:'pending-detail', inprogress:'inprogress-detail', critical:'critical-detail', priority:'priority-detail' };
+      document.getElementById(panelMap[context])?.classList.remove('open');
+      document.querySelectorAll('.report-row').forEach(r=>r.classList.remove('selected'));
+    }
+
+    function showPanel(name, btn) {
+      document.querySelectorAll('.section-panel').forEach(p=>p.classList.remove('active'));
+      document.getElementById('panel-'+name)?.classList.add('active');
+      document.querySelectorAll('.sidebar-item').forEach(b=>b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+    }
+
+    function filterReports(filter, btn, context) {
+      document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const listId = context+'-list';
+      let list = allReports.filter(r=>r.status==='pending');
+      if (filter==='critical') list=list.filter(r=>r.risk_score>=80);
+      else if (filter==='high') list=list.filter(r=>r.risk_score>=60&&r.risk_score<80);
+      else if (filter!=='all') list=list.filter(r=>r.issue_type===filter);
+      const el = document.getElementById(listId);
+      el.innerHTML = list.length ? list.map((r,i)=>reportRowHTML(r,i+1,context)).join('') : '<div class="empty-state"><div class="icon">✅</div><h3>No issues</h3></div>';
+    }
+  </script>
+</body>
+</html>

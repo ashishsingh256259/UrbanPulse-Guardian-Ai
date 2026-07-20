@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Dashboard - UrbanPulse Guardian AI</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    .welcome-card{background:linear-gradient(135deg,rgba(0,212,255,0.08),rgba(139,92,246,0.08));border:1px solid rgba(0,212,255,0.15);border-radius:var(--r);padding:28px;margin-bottom:24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;}
+    .user-av{width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,var(--cyan),var(--purple));display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0;}
+    .level-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2);color:var(--yellow);font-size:0.78rem;font-weight:700;}
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+    .stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:20px;position:relative;overflow:hidden;}
+    .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+    .stat-card.c1::before{background:var(--cyan);}
+    .stat-card.c2::before{background:var(--green);}
+    .stat-card.c3::before{background:var(--yellow);}
+    .stat-card.c4::before{background:var(--purple);}
+    .stat-val{font-family:var(--font-display);font-size:2rem;font-weight:800;line-height:1;margin-bottom:4px;}
+    .stat-lbl{font-size:0.78rem;color:var(--text2);}
+    .report-item{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;display:flex;align-items:center;gap:14px;transition:all 0.2s;margin-bottom:10px;}
+    .report-item:hover{border-color:rgba(0,212,255,0.12);transform:translateX(2px);}
+    .report-emoji{font-size:1.6rem;flex-shrink:0;}
+    .report-info{flex:1;min-width:0;}
+    .report-title{font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .report-meta{font-size:0.75rem;color:var(--text2);margin-top:3px;}
+    .report-right{text-align:right;flex-shrink:0;}
+    .risk-score{font-family:var(--font-display);font-size:1.3rem;font-weight:800;}
+    .xp-section{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:24px;}
+    @media(max-width:768px){.stats-row{grid-template-columns:1fr 1fr;}}
+    @media(max-width:480px){.stats-row{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+  <nav class="nav" id="main-nav"></nav>
+  <div class="page-wrap">
+    <div class="container">
+      <div class="welcome-card" id="welcomeCard">
+        <div class="user-av" id="userAv">👤</div>
+        <div style="flex:1;">
+          <div style="font-size:0.8rem;color:var(--text2);margin-bottom:4px;">Welcome back,</div>
+          <div style="font-family:var(--font-display);font-size:1.5rem;font-weight:800;" id="userName">—</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;">
+            <div class="level-pill" id="levelPill">🥉 Bronze Guardian</div>
+            <span style="font-size:0.78rem;color:var(--text2);" id="cityLabel"></span>
+          </div>
+          <div style="margin-top:12px;max-width:320px;">
+            <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text2);margin-bottom:5px;">
+              <span id="xpLabel">XP Progress</span>
+              <span id="xpCount">0 pts</span>
+            </div>
+            <div class="progress"><div class="progress-bar" id="xpBar" style="width:0%"></div></div>
+          </div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-family:var(--font-display);font-size:2.5rem;font-weight:800;color:var(--yellow);" id="totalPoints">0</div>
+          <div style="font-size:0.75rem;color:var(--text2);">Total Points</div>
+          <a href="/pages/report.html" class="btn btn-primary btn-sm mt-12">+ Report Issue</a>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row" id="statsRow">
+        <div class="stat-card c1"><div class="stat-val" id="s-total">—</div><div class="stat-lbl">My Reports</div></div>
+        <div class="stat-card c2"><div class="stat-val" id="s-resolved">—</div><div class="stat-lbl">Resolved</div></div>
+        <div class="stat-card c3"><div class="stat-val" id="s-pending">—</div><div class="stat-lbl">Pending</div></div>
+        <div class="stat-card c4"><div class="stat-val" id="s-points">—</div><div class="stat-lbl">Points Earned</div></div>
+      </div>
+
+      <!-- My Reports -->
+      <div style="display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start;" class="main-grid">
+        <div>
+          <div class="flex-between mb-16">
+            <div style="font-family:var(--font-display);font-size:1.05rem;font-weight:700;">📋 My Reports</div>
+            <a href="/pages/report.html" class="btn btn-primary btn-sm">+ New Report</a>
+          </div>
+          <div id="reportsList">
+            <div class="empty-state"><div class="icon">📸</div><h3>No reports yet</h3><p>Submit your first issue to get started and earn points!</p><a href="/pages/report.html" class="btn btn-primary mt-16">Report an Issue</a></div>
+          </div>
+        </div>
+
+        <!-- XP & Level -->
+        <div>
+          <div class="xp-section">
+            <div class="card-title">🏆 Your Progress</div>
+            <div style="text-align:center;padding:20px 0;">
+              <div style="font-size:3rem;" id="levelIcon">🥉</div>
+              <div style="font-family:var(--font-display);font-size:1.1rem;font-weight:800;margin:8px 0;" id="levelName">Bronze Guardian</div>
+              <div style="font-size:0.78rem;color:var(--text2);" id="levelNext">1,000 pts to Silver</div>
+            </div>
+            <div class="divider"></div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:8px 0;border-bottom:1px solid var(--border);">
+                <span>📸 Valid report</span><strong style="color:var(--yellow)">+10 pts</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:8px 0;border-bottom:1px solid var(--border);">
+                <span>✅ Issue resolved</span><strong style="color:var(--yellow)">+5 pts</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:8px 0;border-bottom:1px solid var(--border);">
+                <span>🚨 Critical issue</span><strong style="color:var(--yellow)">+20 pts</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:8px 0;">
+                <span>🔥 7-day streak</span><strong style="color:var(--yellow)">+30 pts</strong>
+              </div>
+            </div>
+            <a href="/pages/rewards.html" class="btn btn-ghost btn-full mt-16">View Leaderboard →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/app.js"></script>
+  <script>
+    if (!requireAuth('/pages/login.html')) {}
+    else {
+      buildNav('dashboard');
+      loadDashboard();
+    }
+
+    async function loadDashboard() {
+      const user = getUser();
+      if (!user) return;
+
+      // Fill user info
+      document.getElementById('userName').textContent = user.name;
+      document.getElementById('totalPoints').textContent = (user.points || 0).toLocaleString();
+      document.getElementById('s-points').textContent = (user.points || 0).toLocaleString();
+      if (user.city) document.getElementById('cityLabel').textContent = '📍 ' + user.city;
+
+      const lvl = getLevel(user.points || 0);
+      document.getElementById('levelPill').textContent = `${lvl.icon} ${lvl.name}`;
+      document.getElementById('levelIcon').textContent = lvl.icon;
+      document.getElementById('levelName').textContent = lvl.name;
+      document.getElementById('levelNext').textContent = lvl.next ? `${(lvl.nextAt - user.points).toLocaleString()} pts to ${lvl.next}` : '🏆 Max Level!';
+      document.getElementById('xpCount').textContent = `${(user.points||0).toLocaleString()} pts`;
+      document.getElementById('xpLabel').textContent = lvl.next ? `Progress to ${lvl.next}` : 'Max Level';
+      if (lvl.nextAt) {
+        const prev = lvl.name === 'Bronze Guardian' ? 0 : lvl.name === 'Silver Guardian' ? 1000 : 5000;
+        const pct = Math.min(((user.points - prev) / (lvl.nextAt - prev)) * 100, 100);
+        setTimeout(() => { document.getElementById('xpBar').style.width = pct + '%'; }, 300);
+      }
+
+      // Load reports from API
+      try {
+        const reports = await apiCall('/api/reports/my-reports');
+        const resolved = reports.filter(r => r.status === 'resolved').length;
+        const pending  = reports.filter(r => r.status === 'pending').length;
+        document.getElementById('s-total').textContent = reports.length;
+        document.getElementById('s-resolved').textContent = resolved;
+        document.getElementById('s-pending').textContent = pending;
+        renderReports(reports);
+      } catch(e) {
+        document.getElementById('s-total').textContent = '0';
+        document.getElementById('s-resolved').textContent = '0';
+        document.getElementById('s-pending').textContent = '0';
+      }
+    }
+
+    function renderReports(reports) {
+      const el = document.getElementById('reportsList');
+      if (!reports.length) return;
+      el.innerHTML = reports.slice(0, 10).map(r => `
+        <div class="report-item">
+          <div class="report-emoji">${issueEmoji(r.issue_type)}</div>
+          <div class="report-info">
+            <div class="report-title">${(r.issue_type||'').replace('_',' ').replace(/\b\w/g,l=>l.toUpperCase())}${r.landmark ? ' — '+r.landmark : ''}</div>
+            <div class="report-meta">${timeAgo(r.created_at)} · ${r.location?.address || 'Location recorded'}</div>
+          </div>
+          <div class="report-right">
+            ${statusBadge(r.status)}
+            <div class="risk-score mt-8" style="color:${riskColor(r.risk_score||0)}">${Math.round(r.risk_score||0)}</div>
+            <div style="font-size:0.68rem;color:var(--text2)">risk score</div>
+          </div>
+        </div>
+      `).join('');
+    }
+  </script>
+</body>
+</html>

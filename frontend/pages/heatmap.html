@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>City Heatmap - UrbanPulse Guardian AI</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    body{overflow:hidden;}
+    .heatmap-wrap{display:flex;height:calc(100vh - var(--nav-h));margin-top:var(--nav-h);}
+    #map{flex:1;background:#07090f;}
+    .map-panel{width:330px;flex-shrink:0;background:var(--bg-card2);border-left:1px solid var(--border);overflow-y:auto;padding:0;display:flex;flex-direction:column;}
+
+    /* Tabs */
+    .panel-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+    .ptab{flex:1;padding:12px 8px;text-align:center;font-size:0.75rem;font-weight:700;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--font);}
+    .ptab.active{color:var(--cyan);border-bottom-color:var(--cyan);}
+    .tab-content{display:none;padding:18px;flex-direction:column;gap:14px;}
+    .tab-content.active{display:flex;}
+
+    /* Layers */
+    .layer-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid var(--border);cursor:pointer;transition:all 0.2s;}
+    .layer-row:hover{background:rgba(255,255,255,0.04);}
+    .toggle{width:34px;height:18px;border-radius:9px;background:rgba(255,255,255,0.1);position:relative;transition:background 0.3s;cursor:pointer;}
+    .toggle.on{background:var(--cyan);}
+    .toggle-knob{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:transform 0.3s;}
+    .toggle.on .toggle-knob{transform:translateX(16px);}
+
+    /* Env Health Card */
+    .env-score-card{background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(0,212,255,0.05));border:1px solid rgba(139,92,246,0.2);border-radius:12px;padding:16px;}
+    .env-score-big{font-family:var(--font-display);font-size:3rem;font-weight:800;line-height:1;}
+    .env-metric{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.82rem;}
+    .env-metric:last-child{border:none;}
+    .env-val{font-weight:700;font-size:0.9rem;}
+    .alert-box{border-radius:10px;padding:12px;font-size:0.8rem;display:flex;gap:8px;align-items:flex-start;}
+    .alert-box.red{background:rgba(255,61,90,0.08);border:1px solid rgba(255,61,90,0.2);color:var(--red);}
+    .alert-box.yellow{background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);color:var(--yellow);}
+    .alert-box.green{background:rgba(16,212,142,0.08);border:1px solid rgba(16,212,142,0.2);color:var(--green);}
+
+    /* Flood */
+    .flood-big{font-family:var(--font-display);font-size:2.5rem;font-weight:800;color:var(--red);line-height:1;}
+
+    /* Recent */
+    .recent-item{display:flex;align-items:center;gap:10px;padding:9px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid var(--border);cursor:pointer;transition:all 0.2s;margin-bottom:6px;}
+    .recent-item:hover{background:rgba(255,255,255,0.04);}
+
+    /* Area selector */
+    .area-btn{padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text2);font-size:0.75rem;font-weight:600;cursor:pointer;transition:all 0.2s;font-family:var(--font);}
+    .area-btn.active{background:rgba(139,92,246,0.1);border-color:var(--purple);color:var(--purple);}
+
+    .leaflet-popup-content-wrapper{background:var(--bg-card)!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:12px!important;}
+    .leaflet-popup-tip{background:var(--bg-card)!important;}
+    @media(max-width:768px){.heatmap-wrap{flex-direction:column;}#map{height:50vh;}.map-panel{width:100%;height:auto;overflow:visible;} body{overflow:auto;}}
+  </style>
+</head>
+<body>
+  <nav class="nav" id="main-nav"></nav>
+  <div class="heatmap-wrap">
+    <div id="map"></div>
+    <div class="map-panel">
+      <!-- Tabs -->
+      <div class="panel-tabs">
+        <button class="ptab active" onclick="switchTab('issues',this)">🗺️ Issues</button>
+        <button class="ptab" onclick="switchTab('env',this)">🌿 Env Health</button>
+        <button class="ptab" onclick="switchTab('flood',this)">🌊 Flood</button>
+      </div>
+
+      <!-- TAB 1: Issues -->
+      <div class="tab-content active" id="tab-issues">
+        <div style="font-family:var(--font-display);font-size:0.9rem;font-weight:700;">Map Layers</div>
+        <div>
+          <div class="layer-row" onclick="toggleLayer('pothole',this)" style="margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:8px;"><div style="width:10px;height:10px;border-radius:50%;background:#ff6b35"></div><span style="font-size:0.82rem;font-weight:500;">🕳️ Road Damage</span></div>
+            <div class="toggle on" id="tgl-pothole"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="layer-row" onclick="toggleLayer('garbage',this)" style="margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:8px;"><div style="width:10px;height:10px;border-radius:50%;background:#fbbf24"></div><span style="font-size:0.82rem;font-weight:500;">🗑️ Garbage</span></div>
+            <div class="toggle on" id="tgl-garbage"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="layer-row" onclick="toggleLayer('flood',this)" style="margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:8px;"><div style="width:10px;height:10px;border-radius:50%;background:#00d4ff"></div><span style="font-size:0.82rem;font-weight:500;">💧 Waterlogging</span></div>
+            <div class="toggle on" id="tgl-flood"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="layer-row" onclick="toggleLayer('streetlight',this)" style="margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:8px;"><div style="width:10px;height:10px;border-radius:50%;background:#8b5cf6"></div><span style="font-size:0.82rem;font-weight:500;">💡 Streetlight</span></div>
+            <div class="toggle on" id="tgl-streetlight"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="layer-row" onclick="toggleEnvLayer(this)">
+            <div style="display:flex;align-items:center;gap:8px;"><div style="width:10px;height:10px;border-radius:50%;background:#10d48e"></div><span style="font-size:0.82rem;font-weight:500;">🌿 Env Health</span></div>
+            <div class="toggle" id="tgl-env"><div class="toggle-knob"></div></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-family:var(--font-display);font-size:0.88rem;font-weight:700;margin-bottom:10px;">Legend</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:4px;font-size:0.72rem;"><div style="width:8px;height:8px;border-radius:50%;background:var(--green)"></div>Safe</div>
+            <div style="display:flex;align-items:center;gap:4px;font-size:0.72rem;"><div style="width:8px;height:8px;border-radius:50%;background:var(--yellow)"></div>Warning</div>
+            <div style="display:flex;align-items:center;gap:4px;font-size:0.72rem;"><div style="width:8px;height:8px;border-radius:50%;background:var(--orange)"></div>High</div>
+            <div style="display:flex;align-items:center;gap:4px;font-size:0.72rem;"><div style="width:8px;height:8px;border-radius:50%;background:var(--red)"></div>Critical</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-family:var(--font-display);font-size:0.88rem;font-weight:700;margin-bottom:10px;">Recent Reports</div>
+          <div id="recentList"></div>
+        </div>
+      </div>
+
+      <!-- TAB 2: Environmental Health -->
+      <div class="tab-content" id="tab-env">
+        <div>
+          <div style="font-size:0.72rem;color:var(--text2);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Select Area</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="area-btn active" onclick="loadEnvData('central',this)">Central</button>
+            <button class="area-btn" onclick="loadEnvData('north',this)">North</button>
+            <button class="area-btn" onclick="loadEnvData('south',this)">South</button>
+            <button class="area-btn" onclick="loadEnvData('east',this)">East</button>
+          </div>
+        </div>
+
+        <div class="env-score-card">
+          <div style="font-size:0.72rem;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">🌿 Environmental Health Score</div>
+          <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:4px;">
+            <div class="env-score-big" id="envScore">38</div>
+            <div style="font-size:0.82rem;color:var(--text2);margin-bottom:8px;">/100</div>
+            <div style="margin-bottom:8px;" id="envScoreBadge"><span class="badge badge-critical">🔴 Poor</span></div>
+          </div>
+          <div class="progress mt-8"><div class="progress-bar orange" id="envScoreBar" style="width:38%"></div></div>
+        </div>
+
+        <div class="card card-sm">
+          <div class="env-metric">
+            <span>💨 Air Quality (AQI)</span>
+            <span class="env-val" id="envAQI" style="color:var(--red)">156 — Poor</span>
+          </div>
+          <div class="env-metric">
+            <span>🔊 Noise Level</span>
+            <span class="env-val" id="envNoise" style="color:var(--orange)">72 dB — High</span>
+          </div>
+          <div class="env-metric">
+            <span>🌡️ Heat Index</span>
+            <span class="env-val" id="envHeat" style="color:var(--red)">41°C — Danger</span>
+          </div>
+          <div class="env-metric">
+            <span>💧 Flood Risk</span>
+            <span class="env-val" id="envFlood" style="color:var(--green)">23% — Low</span>
+          </div>
+          <div class="env-metric" style="border:none;">
+            <span>☀️ UV Index</span>
+            <span class="env-val" id="envUV" style="color:var(--yellow)">8 — High</span>
+          </div>
+        </div>
+
+        <div id="envAlert" class="alert-box red">
+          <span>🚨</span>
+          <span id="envAlertText">Sector 12 AQI critical — avoid outdoor activity today. Wear N95 mask if going out.</span>
+        </div>
+
+        <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;margin-bottom:8px;">SDG Impact</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div style="background:rgba(16,212,142,0.08);border:1px solid rgba(16,212,142,0.15);border-radius:8px;padding:8px 10px;font-size:0.72rem;font-weight:600;color:var(--green);">🌍 SDG 13 Climate Action</div>
+          <div style="background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.15);border-radius:8px;padding:8px 10px;font-size:0.72rem;font-weight:600;color:var(--cyan);">🏙️ SDG 11 Sustainable Cities</div>
+          <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.15);border-radius:8px;padding:8px 10px;font-size:0.72rem;font-weight:600;color:var(--purple);">❤️ SDG 3 Good Health</div>
+        </div>
+      </div>
+
+      <!-- TAB 3: Flood -->
+      <div class="tab-content" id="tab-flood">
+        <div style="background:rgba(255,61,90,0.05);border:1px solid rgba(255,61,90,0.15);border-radius:12px;padding:16px;">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--red);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">⚠️ 48-Hour Flood Prediction</div>
+          <div class="flood-big">82%</div>
+          <div style="font-size:0.75rem;color:var(--text2);margin-top:4px;">Flood probability — Yamuna Basin</div>
+          <div class="progress mt-12"><div class="progress-bar orange" style="width:82%"></div></div>
+        </div>
+        <div class="card card-sm">
+          <div style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;margin-bottom:10px;">Flood Risk Zones</div>
+          <div class="env-metric"><span>🔴 Yamuna Basin</span><span class="env-val" style="color:var(--red)">82% — Critical</span></div>
+          <div class="env-metric"><span>🟠 Shahdara Drain</span><span class="env-val" style="color:var(--orange)">65% — High</span></div>
+          <div class="env-metric"><span>🟡 ITO Junction</span><span class="env-val" style="color:var(--yellow)">48% — Medium</span></div>
+          <div class="env-metric" style="border:none;"><span>🟢 South Delhi</span><span class="env-val" style="color:var(--green)">18% — Low</span></div>
+        </div>
+        <div class="alert-box red">
+          <span>🚨</span>
+          <span>Authority alerted. Sandbags being pre-positioned at Sector 21 drain.</span>
+        </div>
+        <div class="alert-box yellow">
+          <span>⚠️</span>
+          <span>Monsoon forecast: 180mm rainfall expected in 48hrs — above average.</span>
+        </div>
+        <div style="font-family:var(--font-display);font-size:0.82rem;font-weight:700;margin-bottom:8px;">Flood + Env Connection</div>
+        <div class="alert-box green">
+          <span>🔗</span>
+          <span>Flood zone roads auto-removed from Safe Route recommendations.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/app.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    buildNav('heatmap');
+    const map = L.map('map',{zoomControl:false}).setView([28.6139,77.2090],12);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CARTO',maxZoom:19}).addTo(map);
+    L.control.zoom({position:'topleft'}).addTo(map);
+
+    const typeColors={pothole:'#ff6b35',garbage:'#fbbf24',waterlogging:'#00d4ff',streetlight:'#8b5cf6',road_crack:'#ff6b35',other:'#7a8ba6'};
+    const layerGroups={pothole:[],garbage:[],flood:[],streetlight:[]};
+    let envLayers=[], envLayerOn=false;
+
+    // Env health data per area
+    const ENV_DATA = {
+      central: { score:38, aqi:'156 — Poor', noise:'72 dB — High', heat:'41°C — Danger', flood:'23% — Low', uv:'8 — High', color:'var(--red)', badge:'🔴 Poor', alert:'red', alertMsg:'AQI critical in Central Delhi — avoid outdoor activity. Wear N95 mask.' },
+      north:   { score:52, aqi:'118 — Moderate', noise:'65 dB — Moderate', heat:'38°C — High', flood:'45% — Medium', uv:'7 — High', color:'var(--orange)', badge:'🟠 Moderate', alert:'yellow', alertMsg:'Moderate AQI in North Delhi. Sensitive groups should limit outdoor exposure.' },
+      south:   { score:71, aqi:'82 — Satisfactory', noise:'58 dB — Moderate', heat:'36°C — Moderate', flood:'12% — Low', uv:'6 — Moderate', color:'var(--yellow)', badge:'🟡 Fair', alert:'yellow', alertMsg:'South Delhi air quality is satisfactory. Heat index elevated — stay hydrated.' },
+      east:    { score:44, aqi:'142 — Poor', noise:'68 dB — High', heat:'40°C — High', flood:'62% — High', uv:'7 — High', color:'var(--orange)', badge:'🟠 Poor', alert:'red', alertMsg:'East Delhi: High flood risk + Poor AQI. Avoid low-lying areas.' },
+    };
+
+    function loadEnvData(area, btn) {
+      document.querySelectorAll('.area-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const d = ENV_DATA[area];
+      document.getElementById('envScore').textContent    = d.score;
+      document.getElementById('envScore').style.color    = d.color;
+      document.getElementById('envScoreBar').style.width = d.score+'%';
+      document.getElementById('envScoreBadge').innerHTML = `<span class="badge badge-${d.score>=70?'low':d.score>=50?'medium':'critical'}">${d.badge}</span>`;
+      document.getElementById('envAQI').textContent   = d.aqi;
+      document.getElementById('envNoise').textContent = d.noise;
+      document.getElementById('envHeat').textContent  = d.heat;
+      document.getElementById('envFlood').textContent = d.flood;
+      document.getElementById('envUV').textContent    = d.uv;
+      const alertEl = document.getElementById('envAlert');
+      alertEl.className = `alert-box ${d.alert}`;
+      document.getElementById('envAlertText').textContent = d.alertMsg;
+      drawEnvZones(area);
+    }
+
+    function drawEnvZones(area) {
+      envLayers.forEach(l=>map.removeLayer(l));
+      envLayers=[];
+      const zones = {
+        central: [[28.6315,77.2167],0.06,'#ff3d5a'],
+        north:   [[28.7041,77.1025],0.05,'#ff6b35'],
+        south:   [[28.5244,77.1855],0.05,'#fbbf24'],
+        east:    [[28.6500,77.3000],0.05,'#ff6b35'],
+      };
+      const [center, radius, color] = zones[area]||zones.central;
+      const c = L.circle(center,{radius:radius*111000,color,fillColor:color,fillOpacity:0.08,weight:2,dashArray:'6,4'}).addTo(map);
+      envLayers.push(c);
+      map.setView(center,13);
+    }
+
+    function toggleEnvLayer(row) {
+      const tgl = document.getElementById('tgl-env');
+      envLayerOn = !envLayerOn;
+      tgl.classList.toggle('on', envLayerOn);
+      if (envLayerOn) {
+        const areas = [
+          {lat:28.6315,lng:77.2167,color:'#ff3d5a',score:38,label:'Central Delhi'},
+          {lat:28.7041,lng:77.1025,color:'#ff6b35',score:52,label:'North Delhi'},
+          {lat:28.5244,lng:77.1855,color:'#fbbf24',score:71,label:'South Delhi'},
+          {lat:28.6500,lng:77.3000,color:'#ff6b35',score:44,label:'East Delhi'},
+        ];
+        areas.forEach(a=>{
+          const c=L.circle([a.lat,a.lng],{radius:3500,color:a.color,fillColor:a.color,fillOpacity:0.1,weight:2})
+            .bindPopup(`<b>${a.label}</b><br>Env Health: <b style="color:${a.color}">${a.score}/100</b>`)
+            .addTo(map);
+          envLayers.push(c);
+        });
+        toast('info','Env Layer ON','AQI + Heat zones visible on map');
+      } else {
+        envLayers.forEach(l=>map.removeLayer(l)); envLayers=[];
+      }
+    }
+
+    function switchTab(tab, btn) {
+      document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-'+tab).classList.add('active');
+    }
+
+    async function loadMapReports() {
+      try {
+        const reports = await apiCall('/api/reports/?limit=100');
+        reports.forEach(r => {
+          const lat=r.location?.coordinates?.[1], lng=r.location?.coordinates?.[0];
+          if(!lat||!lng) return;
+          const color=typeColors[r.issue_type]||'#7a8ba6';
+          const rc=riskColor(r.risk_score||0);
+          const icon=L.divIcon({html:`<div style="width:32px;height:32px;border-radius:50%;background:${color}22;border:2px solid ${color};display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 0 10px ${color}44;position:relative;">${issueEmoji(r.issue_type)}<div style="position:absolute;top:-3px;right:-3px;width:11px;height:11px;border-radius:50%;background:${rc};border:2px solid #07090f;"></div></div>`,className:'',iconSize:[32,32],iconAnchor:[16,16]});
+          const m=L.marker([lat,lng],{icon});
+          m.bindPopup(`<div style="padding:4px;min-width:170px;"><div style="font-weight:700;font-size:0.9rem;margin-bottom:6px;">${issueEmoji(r.issue_type)} ${(r.issue_type||'').replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}</div><div style="font-size:0.75rem;color:#7a8ba6;">${r.location?.address||'—'}</div><div style="display:flex;justify-content:space-between;font-size:0.75rem;padding:3px 0;border-top:1px solid rgba(255,255,255,0.05);margin-top:6px;"><span>Risk</span><strong style="color:${rc}">${Math.round(r.risk_score||0)}/100</strong></div><div style="display:flex;justify-content:space-between;font-size:0.75rem;padding:2px 0;"><span>Status</span><strong>${r.status}</strong></div></div>`);
+          m.addTo(map);
+          const ltype=r.issue_type==='waterlogging'?'flood':r.issue_type==='road_crack'?'pothole':(r.issue_type||'other');
+          if(layerGroups[ltype]) layerGroups[ltype].push(m);
+        });
+        renderRecent(reports.slice(0,6));
+      } catch(e){console.log('Map error',e);}
+    }
+
+    function renderRecent(reports) {
+      document.getElementById('recentList').innerHTML=reports.map(r=>{
+        const lat=r.location?.coordinates?.[1]||28.6139, lng=r.location?.coordinates?.[0]||77.2090;
+        return `<div class="recent-item" onclick="map.setView([${lat},${lng}],15)"><span style="font-size:1.1rem">${issueEmoji(r.issue_type)}</span><div style="flex:1;min-width:0;"><div style="font-size:0.8rem;font-weight:600;">${(r.issue_type||'').replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())} — <span style="color:${riskColor(r.risk_score||0)}">${riskLabel(r.risk_score||0)}</span></div><div style="font-size:0.68rem;color:var(--text2);">${timeAgo(r.created_at)}</div></div><div style="font-size:0.8rem;font-weight:800;color:${riskColor(r.risk_score||0)}">${Math.round(r.risk_score||0)}</div></div>`;
+      }).join('');
+    }
+
+    function toggleLayer(type,el) {
+      const tgl=document.getElementById('tgl-'+type);
+      const isOn=tgl.classList.contains('on');
+      tgl.classList.toggle('on');
+      layerGroups[type]?.forEach(m=>isOn?map.removeLayer(m):m.addTo(map));
+    }
+
+    // Flood zones
+    L.circle([28.5850,77.3150],{radius:1200,color:'#00d4ff',fillColor:'#00d4ff',fillOpacity:0.08,weight:1}).addTo(map).bindPopup('💧 Flood Risk Zone — 82%');
+    L.circle([28.6700,77.3000],{radius:800,color:'#00d4ff',fillColor:'#00d4ff',fillOpacity:0.06,weight:1}).addTo(map);
+
+    loadMapReports();
+  </script>
+</body>
+</html>

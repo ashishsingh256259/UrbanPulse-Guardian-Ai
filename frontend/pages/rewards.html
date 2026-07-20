@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Rewards - UrbanPulse Guardian AI</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    .tier-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px;}
+    .tier-card{background:var(--bg-card);border:2px solid var(--border);border-radius:var(--r);padding:24px;text-align:center;position:relative;transition:all 0.3s;}
+    .tier-card.current{border-color:var(--yellow);box-shadow:0 0 20px rgba(251,191,36,0.1);}
+    .tier-card.locked{opacity:0.45;}
+    .tier-icon{font-size:2.8rem;display:block;margin-bottom:10px;}
+    .tier-name{font-family:var(--font-display);font-size:1rem;font-weight:800;margin-bottom:4px;}
+    .tier-req{font-size:0.75rem;color:var(--text2);margin-bottom:14px;}
+    .current-badge{position:absolute;top:10px;right:10px;background:var(--yellow);color:#000;font-size:0.62rem;font-weight:800;padding:2px 8px;border-radius:10px;}
+    .lb-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid var(--border);margin-bottom:8px;transition:all 0.2s;}
+    .lb-item:hover{transform:translateX(2px);}
+    .lb-item.me{background:rgba(0,212,255,0.04);border-color:rgba(0,212,255,0.15);}
+    .lb-rank{width:28px;text-align:center;font-family:var(--font-display);font-weight:800;font-size:0.9rem;}
+    .lb-av{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+    .lb-name{flex:1;font-size:0.88rem;font-weight:600;}
+    .lb-pts{font-family:var(--font-display);font-size:1rem;font-weight:800;color:var(--yellow);}
+    .activity-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid var(--border);margin-bottom:8px;}
+    @media(max-width:600px){.tier-grid{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+  <nav class="nav" id="main-nav"></nav>
+  <div class="page-wrap">
+    <div class="container">
+      <div class="page-header">
+        <h1>🏆 Rewards</h1>
+        <p>Earn points by reporting genuine issues. Climb the leaderboard.</p>
+      </div>
+
+      <!-- User Banner -->
+      <div style="background:linear-gradient(135deg,rgba(251,191,36,0.08),rgba(139,92,246,0.08));border:1px solid rgba(251,191,36,0.15);border-radius:var(--r);padding:24px;margin-bottom:28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+        <div style="font-size:3rem;" id="bannerIcon">🥉</div>
+        <div style="flex:1;">
+          <div style="font-family:var(--font-display);font-size:1.3rem;font-weight:800;" id="bannerName">—</div>
+          <div style="font-size:0.8rem;color:var(--text2);margin-top:4px;" id="bannerLevel">—</div>
+          <div style="margin-top:10px;max-width:300px;">
+            <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--text2);margin-bottom:5px;">
+              <span id="progLabel">Progress</span><span id="progPts">—</span>
+            </div>
+            <div class="progress"><div class="progress-bar" id="progBar" style="width:0%"></div></div>
+          </div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-family:var(--font-display);font-size:2.8rem;font-weight:800;color:var(--yellow);" id="bannerPts">0</div>
+          <div style="font-size:0.75rem;color:var(--text2);">Total Points</div>
+          <div style="font-size:0.75rem;color:var(--text2);margin-top:4px;" id="bannerReports">0 reports</div>
+        </div>
+      </div>
+
+      <!-- Tiers -->
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:16px;">Guardian Tiers</div>
+      <div class="tier-grid" id="tierGrid">
+        <div class="tier-card" id="t-bronze"><span class="tier-icon">🥉</span><div class="tier-name">Bronze Guardian</div><div class="tier-req">0 – 999 Points</div><div style="font-size:0.75rem;color:var(--text2);">+10 pts/report</div></div>
+        <div class="tier-card" id="t-silver"><span class="tier-icon">🥈</span><div class="tier-name">Silver Guardian</div><div class="tier-req">1,000 – 4,999 Points</div><div style="font-size:0.75rem;color:var(--text2);">+15 pts/report</div></div>
+        <div class="tier-card" id="t-gold"><span class="tier-icon">🥇</span><div class="tier-name">Gold Guardian</div><div class="tier-req">5,000+ Points</div><div style="font-size:0.75rem;color:var(--text2);">+25 pts/report</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start;">
+        <!-- Leaderboard -->
+        <div>
+          <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:16px;">🏅 City Leaderboard</div>
+          <div id="leaderboard">
+            <div class="empty-state"><div class="icon">🏆</div><h3>Loading leaderboard...</h3></div>
+          </div>
+        </div>
+
+        <!-- Activity + How to earn -->
+        <div>
+          <div class="card mb-20">
+            <div class="card-title">⚡ My Recent Activity</div>
+            <div id="activityList">
+              <div style="text-align:center;padding:20px;color:var(--text2);font-size:0.85rem;">No activity yet — submit your first report!</div>
+            </div>
+            <a href="/pages/report.html" class="btn btn-primary btn-full mt-12">📸 Report an Issue</a>
+          </div>
+
+          <div class="card">
+            <div class="card-title">💰 How to Earn Points</div>
+            <div style="display:flex;flex-direction:column;gap:0;">
+              <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:0.82rem;"><span>📸 Valid report submitted</span><strong style="color:var(--yellow)">+10</strong></div>
+              <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:0.82rem;"><span>✅ Your report resolved</span><strong style="color:var(--yellow)">+5</strong></div>
+              <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:0.82rem;"><span>🚨 Critical issue report</span><strong style="color:var(--yellow)">+20</strong></div>
+              <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:0.82rem;"><span>🎯 First report of day</span><strong style="color:var(--yellow)">+5</strong></div>
+              <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:0.82rem;"><span>🔥 7-day streak</span><strong style="color:var(--yellow)">+30</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/app.js"></script>
+  <script>
+    if (!requireAuth()) {}
+    else { buildNav('rewards'); loadRewards(); }
+
+    async function loadRewards() {
+      const user = getUser();
+      if (!user) return;
+
+      const pts = user.points || 0;
+      const lvl = getLevel(pts);
+
+      document.getElementById('bannerIcon').textContent = lvl.icon;
+      document.getElementById('bannerName').textContent = user.name;
+      document.getElementById('bannerLevel').textContent = `${lvl.icon} ${lvl.name}`;
+      document.getElementById('bannerPts').textContent = pts.toLocaleString();
+
+      if (lvl.next) {
+        const prev = lvl.name==='Bronze Guardian'?0:lvl.name==='Silver Guardian'?1000:5000;
+        const pct = Math.min(((pts-prev)/(lvl.nextAt-prev))*100,100);
+        document.getElementById('progLabel').textContent = `To ${lvl.next}`;
+        document.getElementById('progPts').textContent = `${pts.toLocaleString()} / ${lvl.nextAt.toLocaleString()}`;
+        setTimeout(()=>{ document.getElementById('progBar').style.width=pct+'%'; },300);
+      } else {
+        document.getElementById('progLabel').textContent = '🏆 Max Level Reached!';
+        document.getElementById('progBar').style.width = '100%';
+      }
+
+      // Tier highlight
+      const tierMap = {'Bronze Guardian':'t-bronze','Silver Guardian':'t-silver','Gold Guardian':'t-gold','Platinum Guardian':'t-gold'};
+      const tid = tierMap[lvl.name];
+      if (tid) {
+        document.getElementById(tid).classList.add('current');
+        const badge = document.createElement('div');
+        badge.className = 'current-badge'; badge.textContent = 'CURRENT';
+        document.getElementById(tid).appendChild(badge);
+      }
+      ['t-bronze','t-silver','t-gold'].forEach(id => {
+        if (id !== tid) document.getElementById(id).classList.add('locked');
+      });
+
+      // Load real data
+      try {
+        const [reports, lb] = await Promise.all([
+          apiCall('/api/reports/my-reports'),
+          apiCall('/api/reports/leaderboard')
+        ]);
+        document.getElementById('bannerReports').textContent = `${reports.length} reports submitted`;
+        renderLeaderboard(lb, user);
+        renderActivity(reports);
+      } catch(e) {
+        document.getElementById('bannerReports').textContent = '';
+        document.getElementById('leaderboard').innerHTML = `<div class="empty-state"><div class="icon">🏆</div><h3>No data yet</h3><p>Be the first to report issues!</p></div>`;
+      }
+    }
+
+    function renderLeaderboard(lb, me) {
+      const el = document.getElementById('leaderboard');
+      if (!lb?.length) {
+        el.innerHTML = `<div class="empty-state"><div class="icon">🏆</div><h3>No entries yet</h3><p>Submit reports to appear here!</p></div>`;
+        return;
+      }
+      const medals = ['🥇','🥈','🥉'];
+      el.innerHTML = lb.map((u, i) => {
+        const isMe = u.user_id === me.id || u.email === me.email;
+        const lvl = getLevel(u.points||0);
+        return `<div class="lb-item ${isMe?'me':''}">
+          <div class="lb-rank" style="color:${i<3?'var(--yellow)':'var(--text2)'}">${medals[i]||i+1}</div>
+          <div class="lb-av" style="background:rgba(139,92,246,0.1)">${lvl.icon}</div>
+          <div class="lb-name">${u.name}${isMe?' <span style="color:var(--cyan);font-size:0.72rem">(You)</span>':''}<br><span style="font-size:0.7rem;color:var(--text2)">${lvl.name} · ${u.reports_count||0} reports</span></div>
+          <div class="lb-pts">${(u.points||0).toLocaleString()}</div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderActivity(reports) {
+      const el = document.getElementById('activityList');
+      if (!reports?.length) return;
+      el.innerHTML = reports.slice(0,5).map(r => `
+        <div class="activity-item">
+          <span style="font-size:1.3rem">${issueEmoji(r.issue_type)}</span>
+          <div style="flex:1;">
+            <div style="font-size:0.85rem;font-weight:600;">${(r.issue_type||'').replace('_',' ').replace(/\b\w/g,l=>l.toUpperCase())}</div>
+            <div style="font-size:0.72rem;color:var(--text2);">${timeAgo(r.created_at)} · ${statusBadge(r.status)}</div>
+          </div>
+          <div style="font-weight:800;color:var(--yellow);font-size:0.9rem;">+${r.points_awarded||10}</div>
+        </div>
+      `).join('');
+    }
+  </script>
+</body>
+</html>

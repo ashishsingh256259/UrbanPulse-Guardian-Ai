@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Login - UrbanPulse Guardian AI</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-box">
+      <div class="auth-logo">
+        <div class="logo-icon">🏙️</div>
+        <h1>UrbanPulse <span style="color:var(--cyan)">Guardian</span></h1>
+        <p>Sign in to your account</p>
+      </div>
+      <div class="auth-card">
+        <h2>Welcome back 👋</h2>
+        <p class="sub">Enter your credentials to continue</p>
+
+        <!-- Role tabs -->
+        <div style="display:flex;gap:8px;margin-bottom:24px;background:rgba(255,255,255,0.03);border-radius:10px;padding:4px;">
+          <button class="role-tab active" onclick="setRole('citizen')" id="tab-citizen" style="flex:1;padding:8px;border-radius:8px;border:none;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.2s;background:var(--cyan);color:#000;">👤 Citizen</button>
+          <button class="role-tab" onclick="setRole('municipal')" id="tab-municipal" style="flex:1;padding:8px;border-radius:8px;border:none;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.2s;background:transparent;color:var(--text2);">🏛️ Municipality</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input class="form-input" type="email" id="email" placeholder="you@example.com"/>
+          <div class="form-error" id="err-email"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" type="password" id="password" placeholder="••••••••"/>
+          <div class="form-error" id="err-pass"></div>
+        </div>
+
+        <div id="muni-hint" style="display:none;background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:10px;padding:12px;margin-bottom:16px;font-size:0.8rem;color:var(--text2);">
+          🏛️ <strong style="color:var(--cyan)">Municipality Login</strong><br>
+          Use your official municipal credentials provided by the system admin.
+        </div>
+
+        <div class="form-error" id="err-global" style="margin-bottom:12px;font-size:0.85rem;"></div>
+
+        <button class="btn btn-primary btn-full" id="loginBtn" onclick="handleLogin()">
+          Sign In
+        </button>
+
+        <div class="auth-switch">
+          Don't have an account? <a href="/pages/register.html">Create one free →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/app.js"></script>
+  <script>
+    redirectIfLoggedIn();
+    let currentRole = 'citizen';
+
+    function setRole(role) {
+      currentRole = role;
+      const tabC = document.getElementById('tab-citizen');
+      const tabM = document.getElementById('tab-municipal');
+      const hint = document.getElementById('muni-hint');
+      if (role === 'citizen') {
+        tabC.style.background = 'var(--cyan)'; tabC.style.color = '#000';
+        tabM.style.background = 'transparent'; tabM.style.color = 'var(--text2)';
+        hint.style.display = 'none';
+      } else {
+        tabM.style.background = 'var(--cyan)'; tabM.style.color = '#000';
+        tabC.style.background = 'transparent'; tabC.style.color = 'var(--text2)';
+        hint.style.display = 'block';
+        document.getElementById('email').placeholder = 'municipal@urbanpulse.gov';
+      }
+    }
+
+    async function handleLogin() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('loginBtn');
+      const errG = document.getElementById('err-global');
+      errG.style.display = 'none';
+
+      if (!email) { showErr('err-email', 'Email is required'); return; }
+      if (!password) { showErr('err-pass', 'Password is required'); return; }
+
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;margin:0 auto"></div>';
+
+      try {
+        const data = await apiCall('/auth/login', 'POST', { email, password, role: currentRole });
+        setAuth(data.access_token, data.user);
+        toast('success', 'Welcome back!', `Logged in as ${data.user.name}`);
+        setTimeout(() => {
+          window.location.href = data.user.role === 'municipal' ? '/pages/municipal.html' : '/pages/dashboard.html';
+        }, 800);
+      } catch (e) {
+        errG.textContent = e.message || 'Invalid credentials';
+        errG.style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = 'Sign In';
+      }
+    }
+
+    function showErr(id, msg) {
+      const el = document.getElementById(id);
+      el.textContent = msg; el.style.display = 'block';
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+  </script>
+</body>
+</html>

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Safe Route AI - UrbanPulse Guardian AI</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    .safe-layout{display:grid;grid-template-columns:380px 1fr;gap:0;height:calc(100vh - var(--nav-h));margin-top:var(--nav-h);}
+    .safe-panel{background:var(--bg-card2);border-right:1px solid var(--border);overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:18px;}
+    #safeMap{flex:1;background:#07090f;}
+
+    .profile-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+    .profile-btn{padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,0.02);color:var(--text2);font-size:0.8rem;font-weight:600;cursor:pointer;text-align:center;transition:all 0.2s;font-family:var(--font);}
+    .profile-btn:hover{border-color:var(--cyan);color:var(--text);}
+    .profile-btn.active{background:rgba(0,212,255,0.1);border-color:var(--cyan);color:var(--cyan);}
+    .profile-icon{font-size:1.5rem;display:block;margin-bottom:4px;}
+
+    .route-card{border-radius:12px;padding:16px;border:2px solid;cursor:pointer;transition:all 0.3s;position:relative;}
+    .route-card.safe-route{border-color:rgba(16,212,142,0.3);background:rgba(16,212,142,0.05);}
+    .route-card.unsafe-route{border-color:rgba(255,61,90,0.3);background:rgba(255,61,90,0.05);}
+    .route-card.selected{transform:scale(1.02);box-shadow:0 4px 20px rgba(0,0,0,0.3);}
+    .route-card.safe-route.selected{border-color:var(--green);box-shadow:0 4px 20px rgba(16,212,142,0.2);}
+    .route-card.unsafe-route.selected{border-color:var(--red);box-shadow:0 4px 20px rgba(255,61,90,0.2);}
+    .route-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+    .route-label{font-family:var(--font-display);font-size:0.95rem;font-weight:800;}
+    .safety-score{font-family:var(--font-display);font-size:1.8rem;font-weight:800;line-height:1;}
+    .ai-recommend{background:linear-gradient(135deg,rgba(16,212,142,0.1),rgba(0,212,255,0.1));border:1px solid rgba(16,212,142,0.2);border-radius:12px;padding:16px;}
+    .ai-rec-title{font-size:0.72rem;font-weight:700;color:var(--green);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;}
+    .factor-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.8rem;}
+    .factor-row:last-child{border:none;}
+    .factor-bar{width:60px;height:4px;border-radius:2px;background:rgba(255,255,255,0.06);overflow:hidden;}
+    .factor-fill{height:100%;border-radius:2px;}
+
+    .time-toggle{display:flex;gap:6px;}
+    .time-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text2);font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.2s;font-family:var(--font);}
+    .time-btn.active{background:rgba(139,92,246,0.1);border-color:var(--purple);color:var(--purple);}
+
+    .analyzing{display:none;text-align:center;padding:32px 16px;}
+    .analyzing.show{display:block;}
+    .ana-spinner{width:48px;height:48px;border:3px solid rgba(0,212,255,0.1);border-top-color:var(--cyan);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px;}
+
+    .leaflet-popup-content-wrapper{background:var(--bg-card)!important;color:var(--text)!important;border:1px solid var(--border)!important;border-radius:10px!important;}
+    .leaflet-popup-tip{background:var(--bg-card)!important;}
+
+    @media(max-width:900px){.safe-layout{grid-template-columns:1fr;height:auto;}#safeMap{height:50vh;}}
+  </style>
+</head>
+<body>
+  <nav class="nav" id="main-nav"></nav>
+  <div class="safe-layout">
+    <!-- Left Panel -->
+    <div class="safe-panel">
+      <div>
+        <div style="font-family:var(--font-display);font-size:1.2rem;font-weight:800;margin-bottom:4px;">🛡️ Safe Route AI</div>
+        <div style="font-size:0.82rem;color:var(--text2);">Find the safest path — not just the shortest</div>
+      </div>
+
+      <!-- Profile Selection -->
+      <div>
+        <div class="form-label">Who are you?</div>
+        <div class="profile-grid">
+          <button class="profile-btn active" onclick="setProfile('woman',this)"><span class="profile-icon">👩</span>Woman</button>
+          <button class="profile-btn" onclick="setProfile('student',this)"><span class="profile-icon">🎒</span>Student</button>
+          <button class="profile-btn" onclick="setProfile('elderly',this)"><span class="profile-icon">👴</span>Elderly</button>
+        </div>
+      </div>
+
+      <!-- Time of Day -->
+      <div>
+        <div class="form-label">Time of Travel</div>
+        <div class="time-toggle">
+          <button class="time-btn active" onclick="setTime('day',this)">☀️ Day</button>
+          <button class="time-btn" onclick="setTime('evening',this)">🌆 Evening</button>
+          <button class="time-btn" onclick="setTime('night',this)">🌙 Night</button>
+        </div>
+      </div>
+
+      <!-- Locations -->
+      <div>
+        <div class="form-group">
+          <label class="form-label">📍 Current Location</label>
+          <input class="form-input" id="fromLoc" placeholder="e.g. Connaught Place, Delhi" value="Connaught Place, Delhi"/>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">🎯 Destination</label>
+          <input class="form-input" id="toLoc" placeholder="e.g. India Gate, Delhi" value="India Gate, Delhi"/>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="analyzeRoutes()" id="analyzeBtn">
+        🔍 Find Safe Route
+      </button>
+
+      <!-- Analyzing -->
+      <div class="analyzing" id="analyzing">
+        <div class="ana-spinner"></div>
+        <div style="font-weight:700;margin-bottom:6px;" id="anaMsg">Analyzing routes...</div>
+        <div style="font-size:0.78rem;color:var(--text2);">Checking streetlights, hazards, crowd density</div>
+      </div>
+
+      <!-- Results -->
+      <div id="results" style="display:none;">
+        <!-- AI Recommendation -->
+        <div class="ai-recommend">
+          <div class="ai-rec-title">🤖 AI Recommendation</div>
+          <div style="font-size:0.88rem;font-weight:600;" id="aiRec">—</div>
+          <div style="font-size:0.78rem;color:var(--text2);margin-top:4px;" id="aiReason">—</div>
+        </div>
+
+        <!-- Route A -->
+        <div class="route-card unsafe-route mt-12" id="routeA" onclick="selectRoute('A')">
+          <div class="route-header">
+            <div>
+              <div class="route-label" style="color:var(--red);">Route A — Shortest</div>
+              <div style="font-size:0.75rem;color:var(--text2);margin-top:2px;" id="routeA-dist">—</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="safety-score" style="color:var(--red);" id="routeA-score">—</div>
+              <div style="font-size:0.68rem;color:var(--text2);">safety score</div>
+            </div>
+          </div>
+          <div id="routeA-factors"></div>
+          <div style="margin-top:10px;padding:8px;background:rgba(255,61,90,0.08);border-radius:8px;font-size:0.78rem;color:var(--red);" id="routeA-warning">—</div>
+        </div>
+
+        <!-- Route B -->
+        <div class="route-card safe-route mt-12 selected" id="routeB" onclick="selectRoute('B')">
+          <div style="position:absolute;top:-8px;right:12px;background:var(--green);color:#000;font-size:0.65rem;font-weight:800;padding:2px 10px;border-radius:10px;">✅ RECOMMENDED</div>
+          <div class="route-header">
+            <div>
+              <div class="route-label" style="color:var(--green);">Route B — Safest</div>
+              <div style="font-size:0.75rem;color:var(--text2);margin-top:2px;" id="routeB-dist">—</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="safety-score" style="color:var(--green);" id="routeB-score">—</div>
+              <div style="font-size:0.68rem;color:var(--text2);">safety score</div>
+            </div>
+          </div>
+          <div id="routeB-factors"></div>
+          <div style="margin-top:10px;padding:8px;background:rgba(16,212,142,0.08);border-radius:8px;font-size:0.78rem;color:var(--green);" id="routeB-reason">—</div>
+        </div>
+
+        <!-- Safety Tips -->
+        <div class="card card-sm mt-12" id="safetyTips"></div>
+      </div>
+    </div>
+
+    <!-- Map -->
+    <div id="safeMap"></div>
+  </div>
+
+  <script src="../js/app.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    if (!requireAuth()) {}
+    else { buildNav('saferoute'); initMap(); }
+
+    let map, profile = 'woman', timeOfDay = 'day';
+    let routeLayerA = null, routeLayerB = null;
+
+    function initMap() {
+      map = L.map('safeMap', { zoomControl: false }).setView([28.6139, 77.2090], 13);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CARTO' }).addTo(map);
+      L.control.zoom({ position: 'topright' }).addTo(map);
+    }
+
+    function setProfile(p, btn) {
+      profile = p;
+      document.querySelectorAll('.profile-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    function setTime(t, btn) {
+      timeOfDay = t;
+      document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    function selectRoute(r) {
+      document.getElementById('routeA').classList.toggle('selected', r === 'A');
+      document.getElementById('routeB').classList.toggle('selected', r === 'B');
+      if (r === 'A' && routeLayerA) { routeLayerA.setStyle({ opacity: 1, weight: 6 }); routeLayerB?.setStyle({ opacity: 0.3, weight: 3 }); }
+      if (r === 'B' && routeLayerB) { routeLayerB.setStyle({ opacity: 1, weight: 6 }); routeLayerA?.setStyle({ opacity: 0.3, weight: 3 }); }
+    }
+
+    function factorsHTML(factors) {
+      return factors.map(f => `
+        <div class="factor-row">
+          <span>${f.icon} ${f.label}</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="factor-bar"><div class="factor-fill" style="width:${f.score}%;background:${f.score>60?'var(--green)':f.score>35?'var(--yellow)':'var(--red)'}"></div></div>
+            <span style="font-size:0.75rem;color:${f.score>60?'var(--green)':f.score>35?'var(--yellow)':'var(--red)'};">${f.value}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Route coordinates (Delhi demo routes)
+    const ROUTES = {
+      A: {
+        coords: [[28.6315, 77.2167],[28.6280, 77.2190],[28.6250, 77.2210],[28.6220, 77.2280],[28.6129, 77.2295]],
+        dist: '1.0 km', time: '12 min'
+      },
+      B: {
+        coords: [[28.6315, 77.2167],[28.6350, 77.2220],[28.6340, 77.2280],[28.6300, 77.2340],[28.6200, 77.2350],[28.6129, 77.2295]],
+        dist: '1.2 km', time: '15 min'
+      }
+    };
+
+    // Safety scores based on profile + time
+    function getSafetyData() {
+      const nightPenalty  = timeOfDay === 'night'   ? -25 : timeOfDay === 'evening' ? -10 : 0;
+      const profileFactor = profile  === 'woman'    ?  -8 : profile  === 'elderly'  ?  -5 : 0;
+
+      const scoreA = Math.max(20, 45 + nightPenalty + profileFactor);
+      const scoreB = Math.max(55, 92 + Math.round(nightPenalty / 3) + profileFactor);
+
+      const lightsA = timeOfDay === 'night' ? 15 : 40;
+      const lightsB = timeOfDay === 'night' ? 70 : 95;
+
+      return {
+        A: {
+          score: scoreA,
+          factors: [
+            { icon: '💡', label: 'Streetlights',   score: lightsA, value: lightsA > 50 ? 'Good' : '2 broken' },
+            { icon: '⚠️', label: 'Hazard Reports', score: 20, value: '3 reports' },
+            { icon: '👥', label: 'Crowd Density',  score: 30, value: 'Isolated' },
+            { icon: '🌫️', label: 'AQI',            score: 35, value: 'Moderate' },
+          ],
+          warning: timeOfDay === 'night'
+            ? '🚨 Avoid at night — 2 broken lights, isolated 400m stretch'
+            : '⚠️ 2 broken streetlights, isolated stretch, 3 hazard reports nearby',
+        },
+        B: {
+          score: scoreB,
+          factors: [
+            { icon: '💡', label: 'Streetlights',   score: lightsB, value: lightsB > 80 ? 'All working' : 'Mostly good' },
+            { icon: '⚠️', label: 'Hazard Reports', score: 90, value: 'None' },
+            { icon: '👥', label: 'Crowd Density',  score: 85, value: 'High footfall' },
+            { icon: '🌫️', label: 'AQI',            score: 70, value: 'Good' },
+          ],
+          reason: `✅ Well-lit, high footfall, no hazard reports${timeOfDay === 'night' ? ' — safest night route' : ''}`,
+        }
+      };
+    }
+
+    function getAIMessage(scoreA, scoreB, profile, time) {
+      const diff = scoreB - scoreA;
+      const profileLabel = profile === 'woman' ? 'women' : profile === 'elderly' ? 'elderly persons' : 'students';
+      return {
+        rec: `Route B recommended for ${profileLabel} — ${diff}% safer`,
+        reason: `200m longer but significantly safer. ${time === 'night' ? '⚠️ Night travel — extra caution advised.' : 'Well-lit path with high crowd density.'}`
+      };
+    }
+
+    function getSafetyTips() {
+      const tips = {
+        woman:   ['📱 Share live location with trusted contact', '💡 Stay on well-lit roads', '🚶 Walk confidently, avoid distractions', '📞 Keep emergency number ready: 1091'],
+        student: ['👥 Travel in groups when possible', '🚌 Use public transport on main roads', '📱 Inform someone of your route', '⏰ Avoid late night travel alone'],
+        elderly: ['🚌 Prefer buses/auto on main roads', '👥 Travel during peak hours', '🏥 Note hospitals on your route', '📱 Keep family informed'],
+      };
+      return tips[profile] || tips.student;
+    }
+
+    async function analyzeRoutes() {
+      const btn = document.getElementById('analyzeBtn');
+      const analyzing = document.getElementById('analyzing');
+      const results = document.getElementById('results');
+
+      btn.disabled = true;
+      results.style.display = 'none';
+      analyzing.classList.add('show');
+
+      const msgs = ['Fetching streetlight data...', 'Checking hazard reports on route...', 'Analyzing crowd density...', 'Calculating AQI impact...', 'Computing safety scores...'];
+      let i = 0;
+      const t = setInterval(() => { document.getElementById('anaMsg').textContent = msgs[Math.min(i++, msgs.length - 1)]; }, 700);
+
+      await new Promise(r => setTimeout(r, 3500));
+      clearInterval(t);
+      analyzing.classList.remove('show');
+
+      // Get data
+      const data = getSafetyData();
+      const ai = getAIMessage(data.A.score, data.B.score, profile, timeOfDay);
+      const tips = getSafetyTips();
+
+      // Fill UI
+      document.getElementById('aiRec').textContent    = ai.rec;
+      document.getElementById('aiReason').textContent = ai.reason;
+      document.getElementById('routeA-dist').textContent    = `${ROUTES.A.dist} · ${ROUTES.A.time} walk`;
+      document.getElementById('routeB-dist').textContent    = `${ROUTES.B.dist} · ${ROUTES.B.time} walk`;
+      document.getElementById('routeA-score').textContent   = data.A.score + '%';
+      document.getElementById('routeB-score').textContent   = data.B.score + '%';
+      document.getElementById('routeA-factors').innerHTML   = factorsHTML(data.A.factors);
+      document.getElementById('routeB-factors').innerHTML   = factorsHTML(data.B.factors);
+      document.getElementById('routeA-warning').textContent = data.A.warning;
+      document.getElementById('routeB-reason').textContent  = data.B.reason;
+      document.getElementById('safetyTips').innerHTML = `
+        <div class="card-title">🛡️ Safety Tips for You</div>
+        ${tips.map(t => `<div style="font-size:0.82rem;padding:6px 0;border-bottom:1px solid var(--border);">${t}</div>`).join('')}
+      `;
+
+      results.style.display = 'block';
+
+      // Draw routes on map
+      if (routeLayerA) map.removeLayer(routeLayerA);
+      if (routeLayerB) map.removeLayer(routeLayerB);
+
+      routeLayerA = L.polyline(ROUTES.A.coords, { color: '#ff3d5a', weight: 5, opacity: 0.5, dashArray: '8,6' }).addTo(map);
+      routeLayerB = L.polyline(ROUTES.B.coords, { color: '#10d48e', weight: 6, opacity: 1 }).addTo(map);
+
+      // Markers
+      const fromIcon = L.divIcon({ html: '<div style="width:14px;height:14px;border-radius:50%;background:var(--cyan);border:3px solid #fff;box-shadow:0 0 8px var(--cyan)"></div>', className:'', iconSize:[14,14] });
+      const toIcon   = L.divIcon({ html: '<div style="width:14px;height:14px;border-radius:50%;background:var(--yellow);border:3px solid #fff;box-shadow:0 0 8px var(--yellow)"></div>', className:'', iconSize:[14,14] });
+
+      L.marker(ROUTES.B.coords[0], { icon: fromIcon }).addTo(map).bindPopup('📍 Start');
+      L.marker(ROUTES.B.coords[ROUTES.B.coords.length-1], { icon: toIcon }).addTo(map).bindPopup('🎯 Destination');
+
+      // Danger zone marker on Route A
+      L.circleMarker([28.6250, 77.2210], { radius: 18, color: '#ff3d5a', fillColor: '#ff3d5a', fillOpacity: 0.15, weight: 2 })
+        .addTo(map).bindPopup('⚠️ Broken streetlight + isolated area');
+
+      const bounds = L.latLngBounds([...ROUTES.A.coords, ...ROUTES.B.coords]);
+      map.fitBounds(bounds, { padding: [40, 40] });
+
+      // Route A popup
+      routeLayerA.bindPopup(`<div style="padding:4px"><strong style="color:#ff3d5a">Route A — Unsafe</strong><br>Safety: ${data.A.score}% ❌<br>${ROUTES.A.dist} · ${ROUTES.A.time}</div>`);
+      routeLayerB.bindPopup(`<div style="padding:4px"><strong style="color:#10d48e">Route B — Safe ✅</strong><br>Safety: ${data.B.score}%<br>${ROUTES.B.dist} · ${ROUTES.B.time}</div>`);
+
+      btn.disabled = false;
+      toast('success', '✅ Analysis Complete', `Route B is ${data.B.score - data.A.score}% safer for you`);
+    }
+  </script>
+</body>
+</html>

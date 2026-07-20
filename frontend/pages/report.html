@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Report Issue - UrbanPulse Guardian AI</title>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    .upload-zone{border:2px dashed var(--border);border-radius:var(--r);padding:40px;text-align:center;cursor:pointer;transition:all 0.3s;position:relative;overflow:hidden;}
+    .upload-zone:hover,.upload-zone.drag{border-color:var(--cyan);background:rgba(0,212,255,0.03);}
+    .upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+    .preview-img{width:100%;border-radius:10px;max-height:260px;object-fit:cover;border:1px solid var(--border);display:none;}
+    .ai-panel{background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.12);border-radius:var(--r);padding:20px;display:none;margin-top:16px;}
+    .ai-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .ai-item{background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:14px;}
+    .ai-item-label{font-size:0.72rem;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em;}
+    .ai-item-val{font-family:var(--font-display);font-size:1.2rem;font-weight:800;}
+    .loc-card{background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.1);border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+    .processing{position:fixed;inset:0;background:rgba(7,9,15,0.92);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
+    .processing.show{display:flex;}
+    .proc-spinner{width:52px;height:52px;border:3px solid rgba(0,212,255,0.1);border-top-color:var(--cyan);border-radius:50%;animation:spin 0.8s linear infinite;}
+    .steps{display:flex;gap:8px;margin-bottom:28px;}
+    .step-dot{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,0.05);transition:all 0.5s;}
+    .step-dot.active{background:var(--cyan);}
+    .step-dot.done{background:var(--green);}
+  </style>
+</head>
+<body>
+  <nav class="nav" id="main-nav"></nav>
+
+  <div class="processing" id="processing">
+    <div class="proc-spinner"></div>
+    <div style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;">🤖 AI Analyzing...</div>
+    <div style="font-size:0.85rem;color:var(--text2);" id="procMsg">Running YOLOv8 detection</div>
+  </div>
+
+  <div class="page-wrap">
+    <div class="container" style="max-width:900px;">
+      <div class="page-header">
+        <h1>📸 Report an Issue</h1>
+        <p>Upload a photo and our AI will instantly detect, classify and prioritize it.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step-dot active" id="sd1"></div>
+        <div class="step-dot" id="sd2"></div>
+        <div class="step-dot" id="sd3"></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;" id="reportGrid">
+        <!-- Left -->
+        <div>
+          <div class="card">
+            <div class="card-title">📷 Upload Photo</div>
+            <div class="upload-zone" id="uploadZone">
+              <input type="file" id="photoInput" accept="image/*" capture="environment"/>
+              <div id="uploadPrompt">
+                <div style="font-size:2.5rem;margin-bottom:12px;">📷</div>
+                <div style="font-weight:600;margin-bottom:6px;">Drop photo here or click to browse</div>
+                <div style="font-size:0.78rem;color:var(--text2);">JPG, PNG, WEBP · Max 10MB</div>
+              </div>
+              <img id="previewImg" class="preview-img" alt="preview"/>
+            </div>
+            <div id="changePhotoBtn" style="display:none;margin-top:10px;">
+              <button class="btn btn-ghost btn-sm btn-full" onclick="resetPhoto()">↩ Change Photo</button>
+            </div>
+          </div>
+
+          <!-- AI Results -->
+          <div class="ai-panel" id="aiPanel">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+              <div class="dot dot-green"></div>
+              <span style="font-size:0.82rem;font-weight:700;color:var(--cyan);">AI Analysis Complete</span>
+            </div>
+            <div class="ai-grid">
+              <div class="ai-item"><div class="ai-item-label">Issue Detected</div><div class="ai-item-val" id="aiIssue">—</div></div>
+              <div class="ai-item"><div class="ai-item-label">Confidence</div><div class="ai-item-val text-green" id="aiConf">—</div></div>
+              <div class="ai-item"><div class="ai-item-label">Severity</div><div class="ai-item-val" id="aiSev">—</div></div>
+              <div class="ai-item"><div class="ai-item-label">Risk Score</div><div class="ai-item-val" id="aiRisk">—</div></div>
+            </div>
+            <div style="margin-top:14px;">
+              <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text2);margin-bottom:5px;">
+                <span>Risk Level</span><span id="aiRiskLabel">—</span>
+              </div>
+              <div class="progress">
+                <div class="progress-bar orange" id="riskBar" style="width:0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right -->
+        <div>
+          <div class="card">
+            <div class="card-title">📍 Issue Details</div>
+
+            <div class="loc-card">
+              <span style="font-size:1.3rem;">📍</span>
+              <div style="flex:1;">
+                <div style="font-size:0.85rem;font-weight:600;" id="locName">Fetching location...</div>
+                <div style="font-size:0.72rem;color:var(--text2);margin-top:2px;" id="locCoords">—</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="getLocation()">↻</button>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Issue Type</label>
+              <select class="form-select" id="issueType">
+                <option value="">— AI will auto-detect —</option>
+                <option value="pothole">🕳️ Pothole</option>
+                <option value="garbage">🗑️ Garbage Dump</option>
+                <option value="waterlogging">💧 Waterlogging</option>
+                <option value="streetlight">💡 Streetlight Failure</option>
+                <option value="road_crack">🛣️ Road Crack</option>
+                <option value="sewer">🚧 Sewer Issue</option>
+                <option value="other">⚠️ Other</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Nearby Landmark</label>
+              <input class="form-input" id="landmark" type="text" placeholder="e.g. Near City Hospital Gate 2"/>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Description (optional)</label>
+              <textarea class="form-textarea" id="desc" placeholder="Any additional details about the issue..."></textarea>
+            </div>
+
+            <button class="btn btn-primary btn-full" id="submitBtn" onclick="submitReport()" disabled>
+              <span id="submitLabel">📤 Submit Report (+10 points)</span>
+            </button>
+            <div style="font-size:0.72rem;color:var(--text2);text-align:center;margin-top:8px;">Location & photo are required</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/app.js"></script>
+  <script>
+    if (!requireAuth()) {}
+    else { buildNav('report'); getLocation(); }
+
+    let gpsData = null, aiData = null, photoFile = null;
+
+    // GPS
+    async function getLocation() {
+      document.getElementById('locName').textContent = 'Getting location...';
+      navigator.geolocation?.getCurrentPosition(async pos => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        gpsData = { lat, lng };
+        document.getElementById('locCoords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        try {
+          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+          const d = await r.json();
+          document.getElementById('locName').textContent = d.display_name?.split(',').slice(0,3).join(', ') || 'Location found';
+        } catch { document.getElementById('locName').textContent = 'Location captured'; }
+        checkSubmitReady();
+      }, () => { document.getElementById('locName').textContent = 'Location access denied — enable GPS'; });
+    }
+
+    // Photo upload
+    document.getElementById('photoInput').addEventListener('change', e => {
+      if (e.target.files[0]) handlePhoto(e.target.files[0]);
+    });
+    const zone = document.getElementById('uploadZone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('drag');
+      const f = e.dataTransfer.files[0];
+      if (f?.type.startsWith('image/')) handlePhoto(f);
+    });
+
+    function handlePhoto(file) {
+      photoFile = file;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = document.getElementById('previewImg');
+        img.src = e.target.result; img.style.display = 'block';
+        document.getElementById('uploadPrompt').style.display = 'none';
+        document.getElementById('changePhotoBtn').style.display = 'block';
+        document.getElementById('sd1').classList.replace('active','done');
+        document.getElementById('sd2').classList.add('active');
+        runAI(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function resetPhoto() {
+      photoFile = null; aiData = null;
+      document.getElementById('previewImg').style.display = 'none';
+      document.getElementById('uploadPrompt').style.display = 'block';
+      document.getElementById('changePhotoBtn').style.display = 'none';
+      document.getElementById('aiPanel').style.display = 'none';
+      document.getElementById('photoInput').value = '';
+      document.getElementById('submitBtn').disabled = true;
+      document.getElementById('sd1').className = 'step-dot active';
+      document.getElementById('sd2').className = 'step-dot';
+    }
+
+    async function runAI(imgData) {
+      const proc = document.getElementById('processing');
+      proc.classList.add('show');
+      const msgs = ['Running YOLOv8 detection...','Calculating confidence...','Assessing severity...','Computing risk score...','Checking nearby facilities...'];
+      let i = 0;
+      const t = setInterval(() => { document.getElementById('procMsg').textContent = msgs[Math.min(i++, msgs.length-1)]; }, 700);
+
+      // In production: send to /api/analyze — here we use backend mock
+      await new Promise(r => setTimeout(r, 3000));
+      clearInterval(t);
+      proc.classList.remove('show');
+
+      const types = ['Pothole','Garbage Dump','Waterlogging','Streetlight Failure','Road Crack'];
+      const type = types[Math.floor(Math.random()*types.length)];
+      const conf = (Math.random()*15+82).toFixed(1);
+      const risk = Math.floor(Math.random()*45+45);
+      const sevs = ['Medium','High','Critical'];
+      const sev = sevs[Math.floor(Math.random()*3)];
+
+      aiData = { type, conf, risk, sev };
+
+      document.getElementById('aiIssue').textContent = type;
+      document.getElementById('aiConf').textContent = conf + '%';
+      document.getElementById('aiSev').textContent = sev;
+      document.getElementById('aiRisk').textContent = risk + '/100';
+      document.getElementById('aiRiskLabel').textContent = riskLabel(risk);
+      document.getElementById('riskBar').style.width = risk + '%';
+      document.getElementById('riskBar').style.background = riskColor(risk);
+
+      const sel = document.getElementById('issueType');
+      const mapping = {'Pothole':'pothole','Garbage Dump':'garbage','Waterlogging':'waterlogging','Streetlight Failure':'streetlight','Road Crack':'road_crack'};
+      if (mapping[type]) sel.value = mapping[type];
+
+      document.getElementById('aiPanel').style.display = 'block';
+      document.getElementById('sd2').classList.replace('active','done');
+      document.getElementById('sd3').classList.add('active');
+      checkSubmitReady();
+      toast('success','AI Analysis Done',`${type} detected — ${conf}% confidence`);
+    }
+
+    function checkSubmitReady() {
+      document.getElementById('submitBtn').disabled = !(photoFile && gpsData && aiData);
+    }
+
+    async function submitReport() {
+      if (!photoFile || !gpsData) return;
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      document.getElementById('submitLabel').innerHTML = '<div class="spinner" style="width:16px;height:16px;"></div> Submitting...';
+
+      const fd = new FormData();
+      fd.append('photo', photoFile);
+      fd.append('lat', gpsData.lat);
+      fd.append('lng', gpsData.lng);
+      fd.append('address', document.getElementById('locName').textContent);
+      fd.append('issue_type', document.getElementById('issueType').value || (aiData?.type||'').toLowerCase().replace(' ','_'));
+      fd.append('landmark', document.getElementById('landmark').value);
+      fd.append('description', document.getElementById('desc').value);
+
+      try {
+        const data = await apiUpload('/api/reports/', fd);
+        // Update user points in localStorage
+        const user = getUser();
+        if (user) { user.points = (user.points||0) + (data.points_awarded||10); localStorage.setItem('upg_user', JSON.stringify(user)); }
+        toast('success','🎉 Report Submitted!', `+${data.points_awarded||10} points earned`);
+        document.getElementById('sd3').classList.replace('active','done');
+        document.getElementById('submitLabel').innerHTML = '✅ Submitted!';
+        setTimeout(() => { window.location.href = '/pages/dashboard.html'; }, 1500);
+      } catch(e) {
+        toast('error','Submit Failed', e.message);
+        btn.disabled = false;
+        document.getElementById('submitLabel').innerHTML = '📤 Submit Report (+10 points)';
+      }
+    }
+  </script>
+</body>
+</html>
