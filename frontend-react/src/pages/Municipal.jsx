@@ -306,10 +306,22 @@ const Municipal = () => {
               <p className="text-text2">Real-time city issue management</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-7">
-              <div className="bg-bg-card border border-border rounded-xl p-5 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-cyan"><div className="font-display text-[2.2rem] font-extrabold leading-none">{allReports.length}</div><div className="text-[0.75rem] text-text2 mt-1.5">Total Reports</div></div>
-              <div className="bg-bg-card border border-border rounded-xl p-5 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-red"><div className="font-display text-[2.2rem] font-extrabold leading-none">{criticalCount}</div><div className="text-[0.75rem] text-text2 mt-1.5">Critical Issues</div></div>
-              <div className="bg-bg-card border border-border rounded-xl p-5 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-yellow"><div className="font-display text-[2.2rem] font-extrabold leading-none">{pendingCount}</div><div className="text-[0.75rem] text-text2 mt-1.5">Pending</div></div>
-              <div className="bg-bg-card border border-border rounded-xl p-5 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-green"><div className="font-display text-[2.2rem] font-extrabold leading-none">{resolvedCount}</div><div className="text-[0.75rem] text-text2 mt-1.5">Resolved</div></div>
+              <div className="bg-bg-card border border-border rounded-xl p-5 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-cyan cursor-pointer hover:bg-[rgba(255,255,255,0.02)] transition-colors" onClick={() => setActiveTab('overview')}>
+                <div className="font-display text-[2.2rem] font-extrabold leading-none">{allReports.length}</div>
+                <div className="text-[0.75rem] text-text2 mt-1.5">Total Reports</div>
+              </div>
+              <div className="bg-bg-card border border-border rounded-xl p-5 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-red cursor-pointer hover:bg-[rgba(255,255,255,0.02)] transition-colors" onClick={() => { setActiveTab('critical'); setSelectedReport(null); }}>
+                <div className="font-display text-[2.2rem] font-extrabold leading-none">{criticalCount}</div>
+                <div className="text-[0.75rem] text-text2 mt-1.5">Critical Issues</div>
+              </div>
+              <div className="bg-bg-card border border-border rounded-xl p-5 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-yellow cursor-pointer hover:bg-[rgba(255,255,255,0.02)] transition-colors" onClick={() => { setActiveTab('pending'); setSelectedReport(null); setFilter('all'); }}>
+                <div className="font-display text-[2.2rem] font-extrabold leading-none">{pendingCount}</div>
+                <div className="text-[0.75rem] text-text2 mt-1.5">Pending</div>
+              </div>
+              <div className="bg-bg-card border border-border rounded-xl p-5 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-green cursor-pointer hover:bg-[rgba(255,255,255,0.02)] transition-colors" onClick={() => { setActiveTab('resolved'); setSelectedReport(null); }}>
+                <div className="font-display text-[2.2rem] font-extrabold leading-none">{resolvedCount}</div>
+                <div className="text-[0.75rem] text-text2 mt-1.5">Resolved</div>
+              </div>
             </div>
             <div className="font-display text-base font-bold mb-4">🤖 AI Priority Queue (Top 5)</div>
             <div>
