@@ -16,39 +16,80 @@ function calcRisk(issue_type, severity, lat, lng) {
     return Math.round(Math.min(Math.max(score, 5), 99) * 10) / 10;
 }
 
+// Minimum confidence to classify an image as a confirmed infrastructure issue
+const MIN_CONFIDENCE_THRESHOLD = 60;
+
 async function analyzeImageWithAI(imagePath, userIssueType) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === "your_google_gemini_api_key_here") {
-        const typesList = ["pothole", "garbage", "waterlogging", "streetlight", "road_crack"];
-        const detected = userIssueType || typesList[Math.floor(Math.random() * typesList.length)];
-        const confidence = Math.round((82 + Math.random() * 15) * 10) / 10;
-        const severities = ["medium", "high", "critical"];
-        const severity = severities[Math.floor(Math.random() * severities.length)];
-        return { detected, confidence, severity };
+        // No API key: return a neutral "could not confirm" result rather than a fabricated one
+        return {
+            issue_detected: false,
+            detected: null,
+            confidence: 0,
+            severity: null,
+            explanation: "AI analysis unavailable — Gemini API key not configured.",
+            recommendation: "Please configure GEMINI_API_KEY to enable AI analysis."
+        };
     }
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const context = userIssueType ? `The user thinks this is a '${userIssueType}'.` : "";
-        const prompt = `Analyze this image for civic issues like potholes, garbage, waterlogging, broken streetlights, or road cracks. ${context}
-        Respond with ONLY a JSON object in this format:
-        {
-            "issue_type": "pothole|garbage|waterlogging|streetlight|road_crack|other",
-            "confidence": 85.5, 
-            "severity": "low|medium|high|critical"
-        }
-        Make sure the confidence is a float between 0 and 100 representing your certainty.`;
+        const context = userIssueType ? `The user believes this may be a '${userIssueType}'.` : "";
+        const prompt = `You are an urban infrastructure AI analyst for a civic reporting system.
+Your task is to examine this image and determine whether it shows a genuine urban infrastructure problem.
+
+Supported issue categories:
+- pothole: visible hole, depression, or crumbling in road surface
+- garbage: uncollected waste, dumping, overflow of bins
+- waterlogging: standing water on roads or walkways
+- streetlight: visibly broken, dark, or damaged streetlight
+- road_crack: significant surface cracks, fissures, or road damage
+- sewer: open or broken manhole, sewer overflow
+- other: any other clear infrastructure problem (specify)
+
+${context}
+
+IMPORTANT RULES:
+1. You MUST return issueDetected=false if the image shows: a person/selfie, an animal, indoor scene, clear sky, random objects, or anything that is NOT an urban infrastructure problem.
+2. Only return issueDetected=true if you can clearly see a civic/infrastructure problem in the image.
+3. Do NOT force a classification. If uncertain, lower your confidence and set issueDetected=false if confidence < ${MIN_CONFIDENCE_THRESHOLD}.
+4. The explanation must describe WHAT you see in the image that led to your conclusion.
+
+Respond with ONLY a valid JSON object in this exact format:
+{
+  "issue_detected": true,
+  "issue_type": "pothole",
+  "confidence": 91.5,
+  "severity": "high",
+  "explanation": "Visible road-surface depression with crumbling pavement edges and exposed aggregate.",
+  "recommendation": "Road inspection and repair recommended within 48 hours."
+}
+OR if no issue:
+{
+  "issue_detected": false,
+  "issue_type": null,
+  "confidence": 12.0,
+  "severity": null,
+  "explanation": "The image does not show an urban infrastructure problem. It appears to be [describe what you see].",
+  "recommendation": "Please upload a clearer image of the suspected issue."
+}`;
 
         const imageBuffer = fs.readFileSync(imagePath);
         const base64Image = imageBuffer.toString('base64');
         
+        // Detect MIME type from file extension
+        const ext = path.extname(imagePath).toLowerCase();
+        const mimeMap = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
+        const mimeType = mimeMap[ext] || 'image/jpeg';
+
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: [
                 {
                     role: 'user',
                     parts: [
-                        { inlineData: { data: base64Image, mimeType: 'image/jpeg' } },
+                        { inlineData: { data: base64Image, mimeType } },
                         { text: prompt }
                     ]
                 }
@@ -60,14 +101,21 @@ async function analyzeImageWithAI(imagePath, userIssueType) {
         else if (text.startsWith("```")) text = text.slice(3, -3).trim();
         
         const result = JSON.parse(text);
+        const confidence = parseFloat(result.confidence) || 0;
+        const issueDetected = result.issue_detected === true && confidence >= MIN_CONFIDENCE_THRESHOLD;
+
         return {
-            detected: result.issue_type || "other",
-            confidence: result.confidence || 80.0,
-            severity: result.severity || "medium"
+            issue_detected: issueDetected,
+            detected: issueDetected ? (result.issue_type || 'other') : null,
+            confidence,
+            severity: issueDetected ? (result.severity || 'medium') : null,
+            explanation: result.explanation || '',
+            recommendation: result.recommendation || ''
         };
     } catch (error) {
         console.error(`Gemini API Error: ${error.message}`);
-        return { detected: userIssueType || "other", confidence: 50.0, severity: "medium" };
+        // On API error: do NOT fabricate a result
+        throw new Error('AI analysis failed: ' + error.message);
     }
 }
 
@@ -76,6 +124,43 @@ const getLevel = (pts) => {
     if (pts >= 5000) return "Gold Guardian";
     if (pts >= 1000) return "Silver Guardian";
     return "Bronze Guardian";
+};
+
+exports.analyzePreview = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'Please upload an image' });
+        }
+        const { issue_type } = req.body;
+        const imagePath = req.file.path;
+
+        let aiResult;
+        try {
+            aiResult = await analyzeImageWithAI(imagePath, issue_type);
+        } catch (e) {
+            // Clean up uploaded file
+            try { fs.unlinkSync(imagePath); } catch (_) {}
+            return res.status(500).json({
+                success: false,
+                message: 'AI analysis failed. Please try again.',
+                error: e.message
+            });
+        }
+
+        // Clean up temp file after analysis
+        try { fs.unlinkSync(imagePath); } catch (_) {}
+
+        res.json({
+            issue_detected: aiResult.issue_detected,
+            issue_type: aiResult.detected,
+            confidence: aiResult.confidence,
+            severity: aiResult.severity,
+            explanation: aiResult.explanation,
+            recommendation: aiResult.recommendation
+        });
+    } catch (error) {
+        next(error);
+    }
 };
 
 exports.createReport = async (req, res, next) => {
@@ -91,20 +176,37 @@ exports.createReport = async (req, res, next) => {
         const imagePath = req.file.path;
         const imageUrl = `/uploads/${req.file.filename}`;
 
-        const { detected, confidence, severity } = await analyzeImageWithAI(imagePath, issue_type);
-        const risk = calcRisk(detected, severity, latNum, lngNum);
+        let aiResult;
+        try {
+            aiResult = await analyzeImageWithAI(imagePath, issue_type);
+        } catch (e) {
+            console.error('AI analysis failed during report creation:', e.message);
+            // Fall back gracefully: use user-provided type or 'other'
+            aiResult = {
+                issue_detected: !!issue_type,
+                detected: issue_type || 'other',
+                confidence: 50,
+                severity: 'medium',
+                explanation: 'AI analysis unavailable.',
+                recommendation: 'Issue submitted manually.'
+            };
+        }
+
+        const detectedType = aiResult.detected || issue_type || 'other';
+        const severity = aiResult.severity || 'medium';
+        const risk = calcRisk(detectedType, severity, latNum, lngNum);
         const points = risk >= 80 ? 20 : 10;
 
         const report = await Report.create({
             user_id: req.user.id || req.user._id.toString(),
             user_name: req.user.name || `${req.user.first_name || ''} ${req.user.last_name || ''}`.trim(),
-            issue_type: detected,
+            issue_type: detectedType,
             severity,
             description,
             landmark,
             location: { type: 'Point', coordinates: [lngNum, latNum], address: address || "" },
-            ai_confidence: confidence,
-            ai_detected: detected,
+            ai_confidence: aiResult.confidence,
+            ai_detected: aiResult.issue_detected ? detectedType : null,
             risk_score: risk,
             image_url: imageUrl,
             points_awarded: points
@@ -134,12 +236,15 @@ exports.createReport = async (req, res, next) => {
         res.status(201).json({
             id: report._id,
             message: "Report submitted successfully",
-            ai_detected: detected,
-            confidence,
+            issue_detected: aiResult.issue_detected,
+            ai_detected: aiResult.issue_detected ? detectedType : null,
+            confidence: aiResult.confidence,
             severity,
             risk_score: risk,
             points_awarded: points,
             status: "pending",
+            explanation: aiResult.explanation,
+            recommendation: aiResult.recommendation,
             updated_user: updatedUser
         });
     } catch (error) {

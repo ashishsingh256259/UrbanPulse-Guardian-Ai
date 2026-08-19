@@ -15,9 +15,10 @@ const Report = () => {
   const [locName, setLocName] = useState('Fetching location...');
   const [locCoords, setLocCoords] = useState('—');
   
-  const [aiData, setAiData] = useState(null);
+  const [aiData, setAiData] = useState(null);    // { issue_detected, type, conf, sev, risk, explanation, recommendation }
   const [isProcessing, setIsProcessing] = useState(false);
-  const [procMsg, setProcMsg] = useState('Running YOLOv8 detection...');
+  const [aiError, setAiError] = useState(null);
+  const [procMsg, setProcMsg] = useState('Analyzing image...');
   
   const [formData, setFormData] = useState({
     issueType: '',
@@ -60,7 +61,7 @@ const Report = () => {
     reader.onload = (e) => {
       setPreviewSrc(e.target.result);
       setStep(2);
-      runAI(e.target.result);
+      runAI(file);  // pass the actual File object, not base64
     };
     reader.readAsDataURL(file);
   };
@@ -69,41 +70,79 @@ const Report = () => {
     setPhotoFile(null);
     setPreviewSrc(null);
     setAiData(null);
+    setAiError(null);
     setStep(1);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const runAI = (imgData) => {
+  const runAI = async (file) => {
     setIsProcessing(true);
-    const msgs = ['Running YOLOv8 detection...','Calculating confidence...','Assessing severity...','Computing risk score...','Checking nearby facilities...'];
+    setAiError(null);
+    const msgs = ['Analyzing image...', 'Identifying infrastructure issues...', 'Calculating risk score...'];
     let i = 0;
     setProcMsg(msgs[0]);
-    
     const t = setInterval(() => {
       i++;
       if (i < msgs.length) setProcMsg(msgs[i]);
-    }, 700);
+    }, 900);
 
-    setTimeout(() => {
+    try {
+      const token = localStorage.getItem('upg_token');
+      const fd = new FormData();
+      fd.append('photo', file);
+      
+      const res = await fetch('https://urbanpulse-guardian-ai.onrender.com/api/reports/analyze-preview', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: fd
+      });
+      
       clearInterval(t);
-      setIsProcessing(false);
       
-      const types = ['Pothole','Garbage Dump','Waterlogging','Streetlight Failure','Road Crack'];
-      const type = types[Math.floor(Math.random()*types.length)];
-      const conf = (Math.random()*15+82).toFixed(1);
-      const risk = Math.floor(Math.random()*45+45);
-      const sevs = ['Medium','High','Critical'];
-      const sev = sevs[Math.floor(Math.random()*3)];
-      
-      setAiData({ type, conf, risk, sev });
-      setStep(3);
-      
-      const mapping = {'Pothole':'pothole','Garbage Dump':'garbage','Waterlogging':'waterlogging','Streetlight Failure':'streetlight','Road Crack':'road_crack'};
-      if (mapping[type]) {
-        setFormData(prev => ({ ...prev, issueType: mapping[type] }));
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.message || `Server error ${res.status}`);
       }
-    }, 3000);
+      
+      const data = await res.json();
+      const conf = parseFloat(data.confidence) || 0;
+      
+      // Map backend type to display name
+      const typeMap = {
+        pothole: 'Pothole', garbage: 'Garbage Dump', waterlogging: 'Waterlogging',
+        streetlight: 'Streetlight Failure', road_crack: 'Road Crack', sewer: 'Sewer Issue', other: 'Other Issue'
+      };
+
+      const aiResult = {
+        issue_detected: data.issue_detected,
+        type: typeMap[data.issue_type] || data.issue_type || null,
+        conf,
+        sev: data.severity,
+        explanation: data.explanation || '',
+        recommendation: data.recommendation || ''
+      };
+
+      // Auto-fill issue type if detected with high confidence
+      if (data.issue_detected && conf >= 80 && data.issue_type) {
+        const mapping = { pothole: 'pothole', garbage: 'garbage', waterlogging: 'waterlogging', streetlight: 'streetlight', road_crack: 'road_crack', sewer: 'sewer', other: 'other' };
+        if (mapping[data.issue_type]) {
+          setFormData(prev => ({ ...prev, issueType: mapping[data.issue_type] }));
+        }
+      }
+
+      setAiData(aiResult);
+      setStep(3);
+    } catch (e) {
+      clearInterval(t);
+      setAiError(e.message || 'AI analysis unavailable. Please try again.');
+      // Still advance to step 3 so user can submit manually
+      setAiData({ issue_detected: false, type: null, conf: 0, sev: null, explanation: '', recommendation: '' });
+      setStep(3);
+    } finally {
+      setIsProcessing(false);
+    }
   };
+
 
   const submitReport = async () => {
     if (!photoFile || !gpsData) return;
@@ -217,39 +256,68 @@ const Report = () => {
             </div>
 
             {aiData && (
-              <div className="bg-[rgba(0,212,255,0.04)] border border-[rgba(0,212,255,0.12)] rounded-2xl p-5 mt-4">
+              <div className={`border rounded-2xl p-5 mt-4 ${aiData.issue_detected ? 'bg-[rgba(0,212,255,0.04)] border-[rgba(0,212,255,0.12)]' : 'bg-[rgba(255,61,90,0.04)] border-[rgba(255,61,90,0.15)]'}`}>
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-2.5 h-2.5 rounded-full bg-green animate-pulse"></div>
+                  <div className={`w-2.5 h-2.5 rounded-full ${aiData.issue_detected ? 'bg-green animate-pulse' : 'bg-yellow'}`}></div>
                   <span className="text-[0.82rem] font-bold text-cyan">AI Analysis Complete</span>
+                  {aiError && <span className="text-[0.72rem] text-yellow ml-auto">⚠️ {aiError}</span>}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-bg-card2 border border-border rounded-xl p-3.5">
-                    <div className="text-[0.72rem] text-text2 mb-1.5 uppercase tracking-wider">Issue Detected</div>
-                    <div className="font-display text-[1.2rem] font-extrabold">{aiData.type}</div>
+
+                {!aiData.issue_detected ? (
+                  <div className="text-center py-3">
+                    <div className="text-3xl mb-2">🔍</div>
+                    <div className="font-bold text-[1rem] mb-1">No Infrastructure Issue Detected</div>
+                    <div className="text-[0.8rem] text-text2 mb-2">
+                      {aiData.explanation || 'The uploaded image does not appear to show a supported urban infrastructure problem.'}
+                    </div>
+                    {aiData.conf > 0 && (
+                      <div className="text-[0.75rem] text-text3">AI Confidence: {aiData.conf.toFixed(1)}%</div>
+                    )}
+                    <div className="mt-3 text-[0.78rem] text-yellow">
+                      💡 You can still submit manually by selecting an issue type below.
+                    </div>
                   </div>
-                  <div className="bg-bg-card2 border border-border rounded-xl p-3.5">
-                    <div className="text-[0.72rem] text-text2 mb-1.5 uppercase tracking-wider">Confidence</div>
-                    <div className="font-display text-[1.2rem] font-extrabold text-green">{aiData.conf}%</div>
+                ) : (
+                  <div>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div className="bg-bg-card2 border border-border rounded-xl p-3.5">
+                        <div className="text-[0.72rem] text-text2 mb-1.5 uppercase tracking-wider">Issue Detected</div>
+                        <div className="font-display text-[1.1rem] font-extrabold">{aiData.type}</div>
+                      </div>
+                      <div className="bg-bg-card2 border border-border rounded-xl p-3.5">
+                        <div className="text-[0.72rem] text-text2 mb-1.5 uppercase tracking-wider">Confidence</div>
+                        <div className={`font-display text-[1.1rem] font-extrabold ${aiData.conf >= 80 ? 'text-green' : aiData.conf >= 60 ? 'text-yellow' : 'text-orange'}`}>
+                          {aiData.conf.toFixed(1)}%
+                          <span className="text-[0.65rem] font-normal ml-1 text-text2">
+                            {aiData.conf >= 80 ? '(High)' : aiData.conf >= 60 ? '(Moderate)' : '(Low)'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="bg-bg-card2 border border-border rounded-xl p-3.5">
+                        <div className="text-[0.72rem] text-text2 mb-1.5 uppercase tracking-wider">Severity</div>
+                        <div className={`font-display text-[1.1rem] font-extrabold capitalize ${aiData.sev === 'critical' ? 'text-red' : aiData.sev === 'high' ? 'text-orange' : 'text-yellow'}`}>{aiData.sev}</div>
+                      </div>
+                      <div className="bg-bg-card2 border border-border rounded-xl p-3.5">
+                        <div className="text-[0.72rem] text-text2 mb-1.5 uppercase tracking-wider">Status</div>
+                        <div className="font-display text-[0.9rem] font-bold text-green">
+                          {aiData.conf >= 80 ? '✅ Confirmed' : '⚠️ Possible issue'}
+                        </div>
+                      </div>
+                    </div>
+                    {aiData.explanation && (
+                      <div className="bg-[rgba(255,255,255,0.03)] border border-border rounded-xl p-3 mt-2">
+                        <div className="text-[0.72rem] text-text2 uppercase tracking-wider mb-1">Evidence</div>
+                        <div className="text-[0.8rem]">{aiData.explanation}</div>
+                      </div>
+                    )}
+                    {aiData.recommendation && (
+                      <div className="text-[0.78rem] text-text2 mt-2">💡 {aiData.recommendation}</div>
+                    )}
                   </div>
-                  <div className="bg-bg-card2 border border-border rounded-xl p-3.5">
-                    <div className="text-[0.72rem] text-text2 mb-1.5 uppercase tracking-wider">Severity</div>
-                    <div className="font-display text-[1.2rem] font-extrabold">{aiData.sev}</div>
-                  </div>
-                  <div className="bg-bg-card2 border border-border rounded-xl p-3.5">
-                    <div className="text-[0.72rem] text-text2 mb-1.5 uppercase tracking-wider">Risk Score</div>
-                    <div className="font-display text-[1.2rem] font-extrabold">{aiData.risk}/100</div>
-                  </div>
-                </div>
-                <div className="mt-3.5">
-                  <div className="flex justify-between text-[0.75rem] text-text2 mb-1.5">
-                    <span>Risk Level</span><span>{riskLabel(aiData.risk)}</span>
-                  </div>
-                  <div className="h-1.5 bg-[rgba(255,255,255,0.05)] rounded-full overflow-hidden">
-                    <div className="h-full transition-all duration-1000" style={{ width: `${aiData.risk}%`, backgroundColor: riskColor(aiData.risk) }}></div>
-                  </div>
-                </div>
+                )}
               </div>
             )}
+
           </div>
 
           {/* Right */}
@@ -290,7 +358,7 @@ const Report = () => {
                 <textarea className="form-input min-h-[100px] resize-y" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Any additional details about the issue..."></textarea>
               </div>
 
-              <button className="btn btn-primary w-full" onClick={submitReport} disabled={!photoFile || !gpsData || !aiData || isSubmitting}>
+              <button className="btn btn-primary w-full" onClick={submitReport} disabled={!photoFile || !gpsData || isSubmitting || isProcessing}>
                 {isSubmitting ? (
                   <span className="flex items-center justify-center gap-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Submitting...

@@ -10,11 +10,13 @@ const {
     getCityStats,
     getChartData,
     updateStatus,
-    resolveReport
+    resolveReport,
+    analyzePreview
 } = require('../controllers/reports.controller');
 
 router.get('/', getReports);
 router.post('/', protect, upload.single('photo'), createReport);
+router.post('/analyze-preview', protect, upload.single('photo'), analyzePreview);
 router.get('/my-reports', protect, getMyReports);
 router.get('/leaderboard', getLeaderboard);
 router.get('/stats/city', getCityStats);
