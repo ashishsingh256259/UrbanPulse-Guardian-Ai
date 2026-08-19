@@ -13,7 +13,9 @@ const protect = async (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'urbanpulse-secret-key-12345');
+        const secret = process.env.JWT_SECRET || process.env.SECRET_KEY;
+        if (!secret) return res.status(500).json({ success: false, message: 'JWT_SECRET missing' });
+        const decoded = jwt.verify(token, secret);
         
         if (decoded.sub.startsWith('municipal_')) {
             // Handle municipal accounts (which we hardcoded in auth.controller.js in Python)

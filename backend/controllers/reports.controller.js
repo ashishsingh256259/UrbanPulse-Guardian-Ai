@@ -252,6 +252,9 @@ exports.getChartData = async (req, res, next) => {
 
 exports.updateStatus = async (req, res, next) => {
     try {
+        if (req.user.role !== 'municipal') {
+            return res.status(403).json({ success: false, message: 'Only municipal officers can update report status' });
+        }
         const { report_id } = req.params;
         const { status, assigned_team } = req.body;
 
@@ -271,6 +274,9 @@ exports.updateStatus = async (req, res, next) => {
 
 exports.resolveReport = async (req, res, next) => {
     try {
+        if (req.user.role !== 'municipal') {
+            return res.status(403).json({ success: false, message: 'Only municipal officers can resolve reports' });
+        }
         const { report_id } = req.params;
         if (!req.file) {
             return res.status(400).json({ success: false, message: 'Please upload resolution proof image' });

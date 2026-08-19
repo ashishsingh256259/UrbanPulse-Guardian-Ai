@@ -18,7 +18,9 @@ const MUNICIPAL_ACCOUNTS = {
 };
 
 const makeToken = (id) => {
-    return jwt.sign({ sub: id }, process.env.JWT_SECRET || 'urbanpulse-secret-key-12345', {
+    const secret = process.env.JWT_SECRET || process.env.SECRET_KEY;
+    if (!secret) throw new Error("JWT_SECRET is missing");
+    return jwt.sign({ sub: id }, secret, {
         expiresIn: '7d'
     });
 };
