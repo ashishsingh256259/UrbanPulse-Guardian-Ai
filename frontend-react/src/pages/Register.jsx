@@ -42,30 +42,35 @@ const Register = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      
-      setErrGlobal('');
-      setIsLoading(true);
-
-      const fbUser = result.user;
-      
-      const data = await apiCall('/auth/google', 'POST', {
-        email: fbUser.email,
-        name: fbUser.displayName,
-        uid: fbUser.uid
+  const handleGoogleLogin = () => {
+    setErrGlobal('');
+    signInWithPopup(auth, googleProvider)
+      .then(async (result) => {
+        setIsLoading(true);
+        const fbUser = result.user;
+        try {
+          const data = await apiCall('/auth/google', 'POST', {
+            email: fbUser.email,
+            name: fbUser.displayName,
+            uid: fbUser.uid
+          });
+          login(data.access_token, data.user);
+          setTimeout(() => {
+            navigate(data.user.role === 'municipal' ? '/municipal' : '/dashboard');
+          }, 800);
+        } catch (error) {
+          console.error(error);
+          setErrGlobal(error.message || 'Google registration failed on server');
+          setIsLoading(false);
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+        if (error.code !== 'auth/popup-closed-by-user') {
+          setErrGlobal(error.message || 'Google registration failed');
+        }
+        setIsLoading(false);
       });
-      
-      login(data.access_token, data.user);
-      setTimeout(() => {
-        navigate(data.user.role === 'municipal' ? '/municipal' : '/dashboard');
-      }, 800);
-    } catch (error) {
-      console.error(error);
-      setErrGlobal(error.message || 'Google registration failed');
-      setIsLoading(false);
-    }
   };
 
   return (
