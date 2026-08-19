@@ -91,7 +91,7 @@ const Municipal = () => {
       fd.append('resolved_photo', resolvePhotoFile);
       fd.append('status', 'resolved');
       
-      const res = await fetch(`http://localhost:8002/api/reports/${id}/resolve`, {
+      const res = await fetch(`https://urbanpulse-guardian-ai.onrender.com/api/reports/${id}/resolve`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: fd

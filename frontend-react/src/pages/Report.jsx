@@ -120,7 +120,7 @@ const Report = () => {
     fd.append('description', formData.description);
 
     try {
-      const res = await fetch('http://localhost:8002/api/reports/', {
+      const res = await fetch('https://urbanpulse-guardian-ai.onrender.com/api/reports/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
