@@ -144,3 +144,59 @@ exports.getMe = async (req, res, next) => {
         next(error);
     }
 };
+
+exports.googleAuth = async (req, res, next) => {
+    try {
+        const { email, name, uid } = req.body;
+        if (!email) {
+            return res.status(400).json({ success: false, message: 'Email is required' });
+        }
+
+        if (MUNICIPAL_ACCOUNTS[email]) {
+            const acc = MUNICIPAL_ACCOUNTS[email];
+            const token = makeToken(acc.id);
+            const user = {
+                id: acc.id,
+                name: acc.name,
+                email: email,
+                city: acc.city,
+                role: 'municipal',
+                points: 0,
+                level: 'Municipal Officer',
+                reports_count: 0,
+                resolved_count: 0
+            };
+            return res.json({ access_token: token, token_type: "bearer", user });
+        }
+
+        let user = await User.findOne({ email });
+        if (!user) {
+            const parts = name ? name.split(' ') : ['Google', 'User'];
+            const first_name = parts[0] || '';
+            const last_name = parts.slice(1).join(' ') || '';
+            
+            // Generate a random password since they use Google
+            const salt = await bcrypt.genSalt(10);
+            const password_hash = await bcrypt.hash(uid || Math.random().toString(), salt);
+
+            user = await User.create({
+                first_name,
+                last_name,
+                email,
+                password_hash,
+                role: 'citizen',
+                points: 0,
+                level: 'Bronze Guardian'
+            });
+        }
+
+        const token = makeToken(user._id);
+        res.json({
+            access_token: token,
+            token_type: "bearer",
+            user: formatUser(user)
+        });
+    } catch (error) {
+        next(error);
+    }
+};
