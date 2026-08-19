@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const Dashboard = () => {
   const { user, apiCall } = useAuth();
   const [reports, setReports] = useState([]);
   const [stats, setStats] = useState({ total: 0, resolved: 0, pending: 0 });
+  const [filter, setFilter] = useState('all');
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -91,12 +93,17 @@ const Dashboard = () => {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
-            { c: 'border-t-cyan', val: stats.total, lbl: 'My Reports' },
-            { c: 'border-t-green', val: stats.resolved, lbl: 'Resolved' },
-            { c: 'border-t-yellow', val: stats.pending, lbl: 'Pending' },
-            { c: 'border-t-purple', val: user?.points || 0, lbl: 'Points Earned' },
+            { c: 'border-t-cyan', val: stats.total, lbl: 'My Reports', filterKey: 'all' },
+            { c: 'border-t-green', val: stats.resolved, lbl: 'Resolved', filterKey: 'resolved' },
+            { c: 'border-t-yellow', val: stats.pending, lbl: 'Pending', filterKey: 'pending' },
+            { c: 'border-t-purple', val: user?.points || 0, lbl: 'Points Earned', path: '/rewards' },
           ].map((s, i) => (
-            <div key={i} className={`bg-bg-card border border-border border-t-2 ${s.c} rounded-[var(--r)] p-5`}>
+            <div key={i} 
+                 className={`bg-bg-card border border-border border-t-2 ${s.c} rounded-[var(--r)] p-5 cursor-pointer hover:bg-[rgba(255,255,255,0.02)] transition-colors`}
+                 onClick={() => {
+                   if (s.path) navigate(s.path);
+                   else if (s.filterKey) setFilter(s.filterKey);
+                 }}>
               <div className="font-display text-3xl font-extrabold leading-none mb-1">{s.val}</div>
               <div className="text-[0.78rem] text-text2">{s.lbl}</div>
             </div>
@@ -106,12 +113,12 @@ const Dashboard = () => {
         <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
           <div>
             <div className="flex justify-between items-center mb-4">
-              <div className="font-display text-[1.05rem] font-bold">📋 My Reports</div>
+              <div className="font-display text-[1.05rem] font-bold">📋 {filter === 'all' ? 'My Reports' : filter === 'resolved' ? 'Resolved Reports' : 'Pending Reports'}</div>
               <Link to="/report" className="btn-primary px-3 py-1.5 text-xs">+ New Report</Link>
             </div>
             
             <div className="flex flex-col gap-2.5">
-              {reports.length === 0 ? (
+              {(filter === 'all' ? reports : reports.filter(r => r.status === filter)).length === 0 ? (
                 <div className="text-center py-10 bg-bg-card border border-border rounded-[var(--r)]">
                   <div className="text-4xl mb-3">📸</div>
                   <h3 className="font-bold text-lg">No reports yet</h3>
@@ -119,7 +126,7 @@ const Dashboard = () => {
                   <Link to="/report" className="btn-primary">Report an Issue</Link>
                 </div>
               ) : (
-                reports.slice(0, 10).map((r, i) => (
+                (filter === 'all' ? reports : reports.filter(r => r.status === filter)).slice(0, 10).map((r, i) => (
                   <div key={i} className="bg-bg-card border border-border rounded-[var(--r)] p-4 flex items-center gap-3.5 hover:border-[rgba(0,212,255,0.12)] hover:translate-x-0.5 transition-all">
                     <div className="text-2xl shrink-0">{issueEmoji(r.issue_type)}</div>
                     <div className="flex-1 min-w-0">
