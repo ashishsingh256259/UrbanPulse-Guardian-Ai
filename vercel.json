@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd frontend_react && npm install && npm run build",
-  "outputDirectory": "frontend_react/dist",
+  "buildCommand": "cd frontend-react && npm install && npm run build",
+  "outputDirectory": "frontend-react/dist",
   "framework": "vite"
 }
