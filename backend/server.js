@@ -17,7 +17,9 @@ const app = express();
 // Middleware
 const allowedOrigins = [
     'http://localhost:5173',
+    'http://localhost:5174',
     'http://localhost:3000',
+    'https://urban-pulse-guardian-ai.vercel.app',
     process.env.FRONTEND_URL
 ].filter(Boolean);
 
