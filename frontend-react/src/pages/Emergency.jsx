@@ -1,7 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+import { useAuth } from '../contexts/AuthContext';
 
 const Emergency = () => {
+  const { user, isMunicipal } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
   const [location, setLocation] = useState('');
   const [category, setCategory] = useState('Road Accident');
   const [hub, setHub] = useState('Max Super Speciality');
@@ -30,7 +40,7 @@ const Emergency = () => {
   };
 
   return (
-    <div className="grid md:grid-cols-[240px_1fr] min-h-[calc(100vh-var(--nav-h))] mt-[var(--nav-h)]">
+    <div className={`grid ${isMunicipal ? 'md:grid-cols-[240px_1fr]' : 'grid-cols-1'} min-h-[calc(100vh-var(--nav-h))] mt-[var(--nav-h)]`}>
       <Sidebar />
       <div className="p-7 overflow-y-auto">
         <div className="mb-5">
