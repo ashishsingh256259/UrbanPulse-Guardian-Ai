@@ -43,10 +43,12 @@ const Register = () => {
   };
 
   const handleGoogleLogin = async () => {
-    setErrGlobal('');
-    setIsLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      
+      setErrGlobal('');
+      setIsLoading(true);
+
       const fbUser = result.user;
       
       const data = await apiCall('/auth/google', 'POST', {
