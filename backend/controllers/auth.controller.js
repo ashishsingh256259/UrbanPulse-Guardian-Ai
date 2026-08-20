@@ -147,45 +147,48 @@ exports.getMe = async (req, res, next) => {
     }
 };
 
+const admin = require('firebase-admin');
+
+if (!admin.apps.length) {
+    admin.initializeApp({
+        projectId: process.env.FIREBASE_PROJECT_ID || "urbanpulseguardian"
+    });
+}
+
 exports.googleAuth = async (req, res, next) => {
     try {
-        const { email, name, uid } = req.body;
-        if (!email) {
-            return res.status(400).json({ success: false, message: 'Email is required' });
+        const { idToken, email, name, uid } = req.body;
+        if (!idToken) {
+            return res.status(400).json({ success: false, message: 'Google authentication failed (No ID token)' });
         }
 
-        if (MUNICIPAL_ACCOUNTS[email]) {
-            const acc = MUNICIPAL_ACCOUNTS[email];
+        // Verify the ID token securely using Firebase Admin SDK
+        let decodedToken;
+        try {
+            decodedToken = await admin.auth().verifyIdToken(idToken);
+        } catch (err) {
+            return res.status(401).json({ success: false, message: 'Invalid or expired Google auth token' });
+        }
+
+        const verifiedEmail = decodedToken.email;
+
+        if (MUNICIPAL_ACCOUNTS[verifiedEmail]) {
+            const acc = MUNICIPAL_ACCOUNTS[verifiedEmail];
             const token = makeToken(acc.id);
             const user = {
-                id: acc.id,
-                name: acc.name,
-                email: email,
-                city: acc.city,
-                role: 'municipal',
-                points: 0,
-                level: 'Municipal Officer',
-                reports_count: 0,
-                resolved_count: 0
+                id: acc.id, name: acc.name, email: verifiedEmail, city: acc.city,
+                role: "municipal", points: 0, level: "Municipal Officer"
             };
             return res.json({ access_token: token, token_type: "bearer", user });
         }
 
-        let user = await User.findOne({ email });
+        let user = await User.findOne({ email: verifiedEmail });
         if (!user) {
-            const parts = name ? name.split(' ') : ['Google', 'User'];
-            const first_name = parts[0] || '';
-            const last_name = parts.slice(1).join(' ') || '';
-            
-            // Generate a random password since they use Google
-            const salt = await bcrypt.genSalt(10);
-            const password_hash = await bcrypt.hash(uid || Math.random().toString(), salt);
-
             user = await User.create({
-                first_name,
-                last_name,
-                email,
-                password_hash,
+                first_name: name ? name.split(' ')[0] : 'User',
+                last_name: name && name.includes(' ') ? name.split(' ').slice(1).join(' ') : '',
+                email: verifiedEmail,
+                password_hash: await bcrypt.hash(uid || Date.now().toString(), 10),
                 role: 'citizen',
                 points: 0,
                 level: 'Bronze Guardian'

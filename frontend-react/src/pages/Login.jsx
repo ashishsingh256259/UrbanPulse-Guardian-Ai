@@ -55,7 +55,9 @@ const Login = () => {
         setIsLoading(true);
         const fbUser = result.user;
         try {
+          const idToken = await fbUser.getIdToken();
           const data = await apiCall('/auth/google', 'POST', {
+            idToken: idToken,
             email: fbUser.email,
             name: fbUser.displayName,
             uid: fbUser.uid
