@@ -41,11 +41,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   const apiCall = async (endpoint, method = 'GET', body = null) => {
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = {};
     const currentToken = localStorage.getItem('upg_token');
     if (currentToken) headers['Authorization'] = `Bearer ${currentToken}`;
     const opts = { method, headers };
-    if (body) opts.body = JSON.stringify(body);
+    if (body) {
+      if (body instanceof FormData) {
+        opts.body = body;
+      } else {
+        headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+      }
+    }
     
     const API = import.meta.env.VITE_API_URL || 'https://urbanpulse-guardian-ai.onrender.com';
     let res, data;

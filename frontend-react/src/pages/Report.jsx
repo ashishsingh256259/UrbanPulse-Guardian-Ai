@@ -87,24 +87,12 @@ const Report = () => {
     }, 900);
 
     try {
-      const token = localStorage.getItem('upg_token');
       const fd = new FormData();
       fd.append('photo', file);
       
-      const res = await fetch('https://urbanpulse-guardian-ai.onrender.com/api/reports/analyze-preview', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: fd
-      });
+      const data = await apiCall('/api/reports/analyze-preview', 'POST', fd);
       
       clearInterval(t);
-      
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error(errBody.message || `Server error ${res.status}`);
-      }
-      
-      const data = await res.json();
       const conf = parseFloat(data.confidence) || 0;
       
       const aiResult = {
@@ -151,16 +139,7 @@ const Report = () => {
     fd.append('description', formData.description);
 
     try {
-      const res = await fetch('https://urbanpulse-guardian-ai.onrender.com/api/reports/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: fd
-      });
-      
-      if (!res.ok) throw new Error('Upload failed');
-      const data = await res.json();
+      const data = await apiCall('/api/reports', 'POST', fd);
       
       if (user) {
         const updatedUser = { ...user, points: (user.points || 0) + (data.points_awarded || 10) };

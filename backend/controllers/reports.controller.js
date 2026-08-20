@@ -21,7 +21,7 @@ const MIN_CONFIDENCE_THRESHOLD = 60;
 
 async function analyzeImageWithAI(imagePath, userIssueType) {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === "your_google_gemini_api_key_here") {
+    if (!apiKey || apiKey === "your_google_gemini_api_key_here" || apiKey === "your_gemini_api_key_here") {
         throw new Error("AI analysis unavailable — Gemini API key not configured.");
     }
 
@@ -77,9 +77,12 @@ OR if no issue:
         const ext = path.extname(imagePath).toLowerCase();
         const mimeMap = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
         const mimeType = mimeMap[ext] || 'image/jpeg';
+        
+        console.log(`[DEV] AI analysis request received. MimeType: ${mimeType}, Size: ${imageBuffer.length} bytes`);
+        console.log(`[DEV] Starting Gemini request with model: gemini-3.6-flash...`);
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.6-flash',
             contents: [
                 {
                     role: 'user',
@@ -91,11 +94,15 @@ OR if no issue:
             ]
         });
 
+        console.log(`[DEV] Gemini response received. Parsing JSON...`);
+
         let text = response.text.trim();
         if (text.startsWith("```json")) text = text.slice(7, -3).trim();
         else if (text.startsWith("```")) text = text.slice(3, -3).trim();
         
         const result = JSON.parse(text);
+        console.log(`[DEV] Parsing successful. Detected: ${result.issueDetected}`);
+
         const confidence = parseFloat(result.confidence) || 0;
         const issueDetected = result.issueDetected === true && confidence >= MIN_CONFIDENCE_THRESHOLD;
 
@@ -109,7 +116,7 @@ OR if no issue:
             recommendation: result.reasoning || ''
         };
     } catch (error) {
-        console.error(`Gemini API Error: ${error.message}`);
+        console.error(`[DEV] Gemini API Error: ${error.message}`);
         // On API error: do NOT fabricate a result
         throw new Error('AI analysis failed: ' + error.message);
     }
