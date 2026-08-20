@@ -107,27 +107,19 @@ const Report = () => {
       const data = await res.json();
       const conf = parseFloat(data.confidence) || 0;
       
-      // Map backend type to display name
-      const typeMap = {
-        pothole: 'Pothole', garbage: 'Garbage Dump', waterlogging: 'Waterlogging',
-        streetlight: 'Streetlight Failure', road_crack: 'Road Crack', sewer: 'Sewer Issue', other: 'Other Issue'
-      };
-
       const aiResult = {
         issue_detected: data.issue_detected,
-        type: typeMap[data.issue_type] || data.issue_type || null,
+        type: data.issue_type || null,
         conf,
         sev: data.severity,
+        priority: data.priority,
         explanation: data.explanation || '',
         recommendation: data.recommendation || ''
       };
 
       // Auto-fill issue type if detected with high confidence
       if (data.issue_detected && conf >= 80 && data.issue_type) {
-        const mapping = { pothole: 'pothole', garbage: 'garbage', waterlogging: 'waterlogging', streetlight: 'streetlight', road_crack: 'road_crack', sewer: 'sewer', other: 'other' };
-        if (mapping[data.issue_type]) {
-          setFormData(prev => ({ ...prev, issueType: mapping[data.issue_type] }));
-        }
+          setFormData(prev => ({ ...prev, issueType: data.issue_type }));
       }
 
       setAiData(aiResult);
@@ -136,7 +128,7 @@ const Report = () => {
       clearInterval(t);
       setAiError(e.message || 'AI analysis unavailable. Please try again.');
       // Still advance to step 3 so user can submit manually
-      setAiData({ issue_detected: false, type: null, conf: 0, sev: null, explanation: '', recommendation: '' });
+      setAiData({ issue_detected: false, type: null, conf: 0, sev: null, priority: null, explanation: '', recommendation: '' });
       setStep(3);
     } finally {
       setIsProcessing(false);
@@ -256,14 +248,26 @@ const Report = () => {
             </div>
 
             {aiData && (
-              <div className={`border rounded-2xl p-5 mt-4 ${aiData.issue_detected ? 'bg-[rgba(0,212,255,0.04)] border-[rgba(0,212,255,0.12)]' : 'bg-[rgba(255,61,90,0.04)] border-[rgba(255,61,90,0.15)]'}`}>
+              <div className={`border rounded-2xl p-5 mt-4 ${aiError ? 'bg-[rgba(255,193,7,0.04)] border-[rgba(255,193,7,0.15)]' : aiData.issue_detected ? 'bg-[rgba(0,212,255,0.04)] border-[rgba(0,212,255,0.12)]' : 'bg-[rgba(255,61,90,0.04)] border-[rgba(255,61,90,0.15)]'}`}>
                 <div className="flex items-center gap-2 mb-4">
-                  <div className={`w-2.5 h-2.5 rounded-full ${aiData.issue_detected ? 'bg-green animate-pulse' : 'bg-yellow'}`}></div>
-                  <span className="text-[0.82rem] font-bold text-cyan">AI Analysis Complete</span>
-                  {aiError && <span className="text-[0.72rem] text-yellow ml-auto">⚠️ {aiError}</span>}
+                  <div className={`w-2.5 h-2.5 rounded-full ${aiError ? 'bg-yellow' : aiData.issue_detected ? 'bg-green animate-pulse' : 'bg-red'}`}></div>
+                  <span className={`text-[0.82rem] font-bold ${aiError ? 'text-yellow' : aiData.issue_detected ? 'text-cyan' : 'text-red'}`}>
+                    {aiError ? 'AI Analysis Unavailable' : 'AI Analysis Complete'}
+                  </span>
                 </div>
 
-                {!aiData.issue_detected ? (
+                {aiError ? (
+                  <div className="text-center py-3">
+                    <div className="text-3xl mb-2">⚠️</div>
+                    <div className="font-bold text-[1rem] mb-1">AI Analysis Unavailable</div>
+                    <div className="text-[0.8rem] text-text2 mb-2">
+                      {aiError}
+                    </div>
+                    <div className="mt-3 text-[0.78rem] text-yellow">
+                      💡 You can continue manually by selecting the issue type below.
+                    </div>
+                  </div>
+                ) : !aiData.issue_detected ? (
                   <div className="text-center py-3">
                     <div className="text-3xl mb-2">🔍</div>
                     <div className="font-bold text-[1rem] mb-1">No Infrastructure Issue Detected</div>
@@ -288,9 +292,6 @@ const Report = () => {
                         <div className="text-[0.72rem] text-text2 mb-1.5 uppercase tracking-wider">Confidence</div>
                         <div className={`font-display text-[1.1rem] font-extrabold ${aiData.conf >= 80 ? 'text-green' : aiData.conf >= 60 ? 'text-yellow' : 'text-orange'}`}>
                           {aiData.conf.toFixed(1)}%
-                          <span className="text-[0.65rem] font-normal ml-1 text-text2">
-                            {aiData.conf >= 80 ? '(High)' : aiData.conf >= 60 ? '(Moderate)' : '(Low)'}
-                          </span>
                         </div>
                       </div>
                       <div className="bg-bg-card2 border border-border rounded-xl p-3.5">
@@ -298,15 +299,13 @@ const Report = () => {
                         <div className={`font-display text-[1.1rem] font-extrabold capitalize ${aiData.sev === 'critical' ? 'text-red' : aiData.sev === 'high' ? 'text-orange' : 'text-yellow'}`}>{aiData.sev}</div>
                       </div>
                       <div className="bg-bg-card2 border border-border rounded-xl p-3.5">
-                        <div className="text-[0.72rem] text-text2 mb-1.5 uppercase tracking-wider">Status</div>
-                        <div className="font-display text-[0.9rem] font-bold text-green">
-                          {aiData.conf >= 80 ? '✅ Confirmed' : '⚠️ Possible issue'}
-                        </div>
+                        <div className="text-[0.72rem] text-text2 mb-1.5 uppercase tracking-wider">Priority</div>
+                        <div className={`font-display text-[1.1rem] font-extrabold capitalize ${aiData.priority === 'critical' ? 'text-red' : aiData.priority === 'high' ? 'text-orange' : 'text-yellow'}`}>{aiData.priority}</div>
                       </div>
                     </div>
                     {aiData.explanation && (
                       <div className="bg-[rgba(255,255,255,0.03)] border border-border rounded-xl p-3 mt-2">
-                        <div className="text-[0.72rem] text-text2 uppercase tracking-wider mb-1">Evidence</div>
+                        <div className="text-[0.72rem] text-text2 uppercase tracking-wider mb-1">Description</div>
                         <div className="text-[0.8rem]">{aiData.explanation}</div>
                       </div>
                     )}
@@ -336,15 +335,15 @@ const Report = () => {
 
               <div className="mb-4">
                 <label className="form-label">Issue Type</label>
-                <select className="form-input bg-bg-card appearance-none cursor-pointer" value={formData.issueType} onChange={e => setFormData({...formData, issueType: e.target.value})}>
-                  <option value="">— AI will auto-detect —</option>
-                  <option value="pothole">🕳️ Pothole</option>
-                  <option value="garbage">🗑️ Garbage Dump</option>
-                  <option value="waterlogging">💧 Waterlogging</option>
-                  <option value="streetlight">💡 Streetlight Failure</option>
-                  <option value="road_crack">🛣️ Road Crack</option>
-                  <option value="sewer">🚧 Sewer Issue</option>
-                  <option value="other">⚠️ Other</option>
+                <select className="form-input bg-bg-card cursor-pointer" value={formData.issueType} onChange={e => setFormData({...formData, issueType: e.target.value})}>
+                  <option value="">Auto Detect with AI</option>
+                  <option value="Pothole">🕳️ Pothole</option>
+                  <option value="Broken Streetlight">💡 Broken Streetlight</option>
+                  <option value="Garbage/Waste Overflow">🗑️ Garbage/Waste Overflow</option>
+                  <option value="Road Damage">🛣️ Road Damage</option>
+                  <option value="Water Leakage">💧 Water Leakage</option>
+                  <option value="Traffic/Road Obstruction">🚧 Traffic/Road Obstruction</option>
+                  <option value="Other Urban Infrastructure Issue">⚠️ Other Urban Infrastructure Issue</option>
                 </select>
               </div>
 

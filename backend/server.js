@@ -3,6 +3,8 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/database');
 const errorHandler = require('./middleware/error.middleware');
 
@@ -13,6 +15,24 @@ dotenv.config();
 connectDB();
 
 const app = express();
+
+app.set('trust proxy', 1);
+
+// Security Headers
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
+// Global Rate Limiting
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: 'Too many requests, please try again later.' }
+});
+app.use('/api', globalLimiter);
+app.use('/auth', globalLimiter);
 
 // Middleware
 const allowedOrigins = [
@@ -33,8 +53,8 @@ app.use(cors({
     },
     credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, process.env.UPLOAD_DIR || 'uploads');

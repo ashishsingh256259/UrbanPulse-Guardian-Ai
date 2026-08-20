@@ -1,5 +1,6 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
+import { Shield, User, GraduationCap, Users, Sun, Sunset, Moon, MapPin, Flag, Navigation, AlertTriangle, Info, CheckCircle, Check } from 'lucide-react';
 
 // â”€â”€ Haversine distance between two [lat, lng] points in meters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function haversine([lat1, lng1], [lat2, lng2]) {
@@ -178,7 +179,7 @@ const SafeRoute = () => {
     });
     layersRef.current.push(
       L.marker([from.lat, from.lng], { icon: mkIcon('var(--cyan)',   'var(--cyan)'  ) }).addTo(mapInst.current).bindPopup('ðŸ“ Start'),
-      L.marker([to.lat,   to.lng  ], { icon: mkIcon('var(--yellow)', 'var(--yellow)') }).addTo(mapInst.current).bindPopup('ðŸŽ¯ Destination')
+      L.marker([to.lat,   to.lng  ], { icon: mkIcon('var(--yellow)', 'var(--yellow)') }).addTo(mapInst.current).bindPopup('<div style="display:flex;align-items:center;gap:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Destination</div>')
     );
 
     // De-duplicate & plot hazard circles
@@ -228,11 +229,11 @@ const SafeRoute = () => {
         <div>
           <div className="form-label">Who are you?</div>
           <div className="grid grid-cols-3 gap-2">
-            {[{ id: 'woman', icon: 'ðŸ‘©', label: 'Woman' }, { id: 'student', icon: 'ðŸŽ’', label: 'Student' }, { id: 'elderly', icon: 'ðŸ‘´', label: 'Elderly' }].map((p) => (
+            {[{ id: 'woman', icon: <User className="mx-auto mb-1 w-6 h-6"/>, label: 'Woman' }, { id: 'student', icon: <GraduationCap className="mx-auto mb-1 w-6 h-6"/>, label: 'Student' }, { id: 'elderly', icon: <Users className="mx-auto mb-1 w-6 h-6"/>, label: 'Elderly' }].map((p) => (
               <button key={p.id}
-                className={`p-2 rounded-[10px] border text-[0.8rem] font-semibold cursor-pointer text-center transition-all ${profile === p.id ? 'bg-[rgba(0,212,255,0.1)] border-cyan text-cyan' : 'bg-[rgba(255,255,255,0.02)] border-border text-text2 hover:border-cyan hover:text-text'}`}
+                className={`p-2 rounded-[10px] border text-[0.8rem] font-semibold cursor-pointer text-center transition-all flex flex-col items-center justify-center ${profile === p.id ? 'bg-[rgba(0,212,255,0.1)] border-cyan text-cyan' : 'bg-[rgba(255,255,255,0.02)] border-border text-text2 hover:border-cyan hover:text-text'}`}
                 onClick={() => setProfile(p.id)}>
-                <span className="text-[1.5rem] block mb-1">{p.icon}</span>{p.label}
+                {p.icon}{p.label}
               </button>
             ))}
           </div>
@@ -241,11 +242,11 @@ const SafeRoute = () => {
         <div>
           <div className="form-label">Time of Travel</div>
           <div className="flex gap-1.5">
-            {[{ id: 'day', label: 'â˜€ï¸ Day' }, { id: 'evening', label: 'ðŸŒ† Evening' }, { id: 'night', label: 'ðŸŒ™ Night' }].map((t) => (
+            {[{ id: 'day', label: 'Day', icon: <Sun className="w-4 h-4 mr-1.5"/> }, { id: 'evening', label: 'Evening', icon: <Sunset className="w-4 h-4 mr-1.5"/> }, { id: 'night', label: 'Night', icon: <Moon className="w-4 h-4 mr-1.5"/> }].map((t) => (
               <button key={t.id}
-                className={`flex-1 p-2 rounded-lg border text-[0.78rem] font-semibold cursor-pointer transition-all ${timeOfDay === t.id ? 'bg-[rgba(139,92,246,0.1)] border-purple text-purple' : 'bg-transparent border-border text-text2'}`}
+                className={`flex-1 p-2 rounded-lg border text-[0.78rem] font-semibold cursor-pointer transition-all flex items-center justify-center ${timeOfDay === t.id ? 'bg-[rgba(139,92,246,0.1)] border-purple text-purple' : 'bg-transparent border-border text-text2'}`}
                 onClick={() => setTimeOfDay(t.id)}>
-                {t.label}
+                {t.icon}{t.label}
               </button>
             ))}
           </div>
@@ -257,7 +258,7 @@ const SafeRoute = () => {
             <input className="form-input" value={fromLoc} onChange={(e) => setFromLoc(e.target.value)} placeholder="e.g. Connaught Place, Delhi" />
           </div>
           <div className="form-group mb-0">
-            <label className="form-label">ðŸŽ¯ Destination</label>
+            <label className="form-label flex items-center gap-1.5"><Flag className="w-4 h-4"/> Destination</label>
             <input className="form-input" value={toLoc} onChange={(e) => setToLoc(e.target.value)} placeholder="e.g. India Gate, Delhi" />
           </div>
         </div>
@@ -299,7 +300,7 @@ const SafeRoute = () => {
                   style={{ borderColor: isSelected ? c : `${c}55`, backgroundColor: `${c}0d`, boxShadow: isSelected ? `0 4px 20px ${c}33` : 'none' }}
                   onClick={() => handleSelectRoute(idx)}>
                   {idx === 0 && (
-                    <div className="absolute -top-2 right-3 bg-green text-black text-[0.62rem] font-extrabold py-0.5 px-2.5 rounded-[10px]">âœ… RECOMMENDED</div>
+                    <div className="absolute -top-2 right-3 bg-green text-black text-[0.62rem] font-extrabold py-0.5 px-2.5 rounded-[10px] flex items-center gap-1"><CheckCircle className="w-3 h-3"/> RECOMMENDED</div>
                   )}
                   <div className="flex items-center justify-between mb-3">
                     <div>
@@ -344,9 +345,9 @@ const SafeRoute = () => {
             </div>
 
             <div className="card p-4">
-              <div className="font-bold mb-3">ðŸ›¡ï¸ Safety Tips for You</div>
+              <div className="font-bold mb-3 flex items-center gap-1.5"><Shield className="w-4 h-4 text-cyan"/> Safety Tips for You</div>
               {(tips[profile] || tips.student).map((t, i) => (
-                <div key={i} className="text-[0.82rem] py-1.5 border-b border-border last:border-none">{t}</div>
+                <div key={i} className="text-[0.82rem] py-1.5 border-b border-border last:border-none flex items-start gap-2"><Check className="w-3.5 h-3.5 shrink-0 mt-0.5 text-cyan"/> {t}</div>
               ))}
             </div>
           </div>

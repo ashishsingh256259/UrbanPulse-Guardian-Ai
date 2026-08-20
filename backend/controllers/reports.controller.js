@@ -22,15 +22,7 @@ const MIN_CONFIDENCE_THRESHOLD = 60;
 async function analyzeImageWithAI(imagePath, userIssueType) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === "your_google_gemini_api_key_here") {
-        // No API key: return a neutral "could not confirm" result rather than a fabricated one
-        return {
-            issue_detected: false,
-            detected: null,
-            confidence: 0,
-            severity: null,
-            explanation: "AI analysis unavailable — Gemini API key not configured.",
-            recommendation: "Please configure GEMINI_API_KEY to enable AI analysis."
-        };
+        throw new Error("AI analysis unavailable — Gemini API key not configured.");
     }
 
     try {
@@ -40,13 +32,14 @@ async function analyzeImageWithAI(imagePath, userIssueType) {
 Your task is to examine this image and determine whether it shows a genuine urban infrastructure problem.
 
 Supported issue categories:
-- pothole: visible hole, depression, or crumbling in road surface
-- garbage: uncollected waste, dumping, overflow of bins
-- waterlogging: standing water on roads or walkways
-- streetlight: visibly broken, dark, or damaged streetlight
-- road_crack: significant surface cracks, fissures, or road damage
-- sewer: open or broken manhole, sewer overflow
-- other: any other clear infrastructure problem (specify)
+- Pothole
+- Broken Streetlight
+- Garbage/Waste Overflow
+- Road Damage
+- Water Leakage
+- Traffic/Road Obstruction
+- Other Urban Infrastructure Issue
+- No Infrastructure Issue
 
 ${context}
 
@@ -54,25 +47,27 @@ IMPORTANT RULES:
 1. You MUST return issueDetected=false if the image shows: a person/selfie, an animal, indoor scene, clear sky, random objects, or anything that is NOT an urban infrastructure problem.
 2. Only return issueDetected=true if you can clearly see a civic/infrastructure problem in the image.
 3. Do NOT force a classification. If uncertain, lower your confidence and set issueDetected=false if confidence < ${MIN_CONFIDENCE_THRESHOLD}.
-4. The explanation must describe WHAT you see in the image that led to your conclusion.
+4. The reasoning must describe WHAT you see in the image that led to your conclusion.
 
 Respond with ONLY a valid JSON object in this exact format:
 {
-  "issue_detected": true,
-  "issue_type": "pothole",
-  "confidence": 91.5,
-  "severity": "high",
-  "explanation": "Visible road-surface depression with crumbling pavement edges and exposed aggregate.",
-  "recommendation": "Road inspection and repair recommended within 48 hours."
+  "issueDetected": true,
+  "issueType": "Pothole",
+  "confidence": 87,
+  "severity": "High",
+  "priority": "High",
+  "description": "Visible road-surface depression with crumbling pavement edges and exposed aggregate.",
+  "reasoning": "The image clearly shows a deep circular hole in the asphalt surface typical of a pothole."
 }
 OR if no issue:
 {
-  "issue_detected": false,
-  "issue_type": null,
-  "confidence": 12.0,
-  "severity": null,
-  "explanation": "The image does not show an urban infrastructure problem. It appears to be [describe what you see].",
-  "recommendation": "Please upload a clearer image of the suspected issue."
+  "issueDetected": false,
+  "issueType": "No Infrastructure Issue",
+  "confidence": 95,
+  "severity": "Low",
+  "priority": "Low",
+  "description": "No valid urban infrastructure issue detected.",
+  "reasoning": "The image does not show an urban infrastructure problem. It appears to be a clear sky and trees."
 }`;
 
         const imageBuffer = fs.readFileSync(imagePath);
@@ -102,15 +97,16 @@ OR if no issue:
         
         const result = JSON.parse(text);
         const confidence = parseFloat(result.confidence) || 0;
-        const issueDetected = result.issue_detected === true && confidence >= MIN_CONFIDENCE_THRESHOLD;
+        const issueDetected = result.issueDetected === true && confidence >= MIN_CONFIDENCE_THRESHOLD;
 
         return {
             issue_detected: issueDetected,
-            detected: issueDetected ? (result.issue_type || 'other') : null,
+            detected: issueDetected ? (result.issueType || 'Other Urban Infrastructure Issue') : null,
             confidence,
-            severity: issueDetected ? (result.severity || 'medium') : null,
-            explanation: result.explanation || '',
-            recommendation: result.recommendation || ''
+            severity: issueDetected ? (result.severity ? result.severity.toLowerCase() : 'medium') : null,
+            priority: issueDetected ? (result.priority ? result.priority.toLowerCase() : 'medium') : null,
+            explanation: result.description || 'No valid urban infrastructure issue detected.',
+            recommendation: result.reasoning || ''
         };
     } catch (error) {
         console.error(`Gemini API Error: ${error.message}`);
@@ -155,6 +151,7 @@ exports.analyzePreview = async (req, res, next) => {
             issue_type: aiResult.detected,
             confidence: aiResult.confidence,
             severity: aiResult.severity,
+            priority: aiResult.priority,
             explanation: aiResult.explanation,
             recommendation: aiResult.recommendation
         });

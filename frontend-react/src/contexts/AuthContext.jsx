@@ -48,16 +48,21 @@ export const AuthProvider = ({ children }) => {
     if (body) opts.body = JSON.stringify(body);
     
     const API = import.meta.env.VITE_API_URL || 'https://urbanpulse-guardian-ai.onrender.com';
-    const res = await fetch(API + endpoint, opts);
-    const data = await res.json();
+    let res, data;
+    try {
+      res = await fetch(API + endpoint, opts);
+      data = await res.json();
+    } catch (e) {
+      throw new Error('Unable to connect to the server. Please try again.');
+    }
     
     if (res.status === 401 || res.status === 403) {
       logout();
       window.location.href = '/login?expired=true';
-      throw new Error('Session expired');
+      throw new Error('Your session has expired. Please sign in again.');
     }
     
-    if (!res.ok) throw new Error(data.detail || 'API Error');
+    if (!res.ok) throw new Error(data.message || data.detail || 'API Error');
     return data;
   };
 

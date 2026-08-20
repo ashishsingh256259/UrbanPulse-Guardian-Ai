@@ -22,10 +22,14 @@ const upload = multer({
     storage: storage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: function (req, file, cb) {
-        if (file.mimetype.startsWith('image/')) {
+        const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+        const allowedExtensions = ['.jpeg', '.jpg', '.png', '.webp'];
+        const ext = path.extname(file.originalname).toLowerCase();
+
+        if (allowedMimeTypes.includes(file.mimetype) && allowedExtensions.includes(ext)) {
             cb(null, true);
         } else {
-            cb(new Error('Not an image! Please upload an image.'), false);
+            cb(new Error('Invalid file type! Only JPG, PNG, and WebP images are allowed.'), false);
         }
     }
 });
