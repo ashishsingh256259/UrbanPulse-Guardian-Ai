@@ -12,7 +12,10 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
-  const [errGlobal, setErrGlobal] = useState('');
+  const [errGlobal, setErrGlobal] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('expired') ? 'Your session has expired. Please log in again.' : '';
+  });
   const [errEmail, setErrEmail] = useState('');
   const [errPass, setErrPass] = useState('');
   const [isLoading, setIsLoading] = useState(false);

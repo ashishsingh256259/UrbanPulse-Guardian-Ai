@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
-const API = 'https://urbanpulse-guardian-ai.onrender.com';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -9,17 +8,22 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('upg_token');
-    const storedUser = localStorage.getItem('upg_user');
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Failed to parse user");
+    const initAuth = async () => {
+      const storedToken = localStorage.getItem('upg_token');
+      const storedUser = localStorage.getItem('upg_user');
+      if (storedToken && storedUser) {
+        setToken(storedToken);
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          console.error("Failed to parse user");
+          localStorage.removeItem('upg_token');
+          localStorage.removeItem('upg_user');
+        }
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+    initAuth();
   }, []);
 
   const login = (newToken, newUser) => {
@@ -38,12 +42,21 @@ export const AuthProvider = ({ children }) => {
 
   const apiCall = async (endpoint, method = 'GET', body = null) => {
     const headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const currentToken = localStorage.getItem('upg_token');
+    if (currentToken) headers['Authorization'] = `Bearer ${currentToken}`;
     const opts = { method, headers };
     if (body) opts.body = JSON.stringify(body);
     
+    const API = import.meta.env.VITE_API_URL || 'https://urbanpulse-guardian-ai.onrender.com';
     const res = await fetch(API + endpoint, opts);
     const data = await res.json();
+    
+    if (res.status === 401 || res.status === 403) {
+      logout();
+      window.location.href = '/login?expired=true';
+      throw new Error('Session expired');
+    }
+    
     if (!res.ok) throw new Error(data.detail || 'API Error');
     return data;
   };
