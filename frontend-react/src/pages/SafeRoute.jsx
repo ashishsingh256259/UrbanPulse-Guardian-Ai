@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { Shield, User, GraduationCap, Users, Sun, Sunset, Moon, MapPin, Flag, Navigation, AlertTriangle, Info, CheckCircle, Check } from 'lucide-react';
 
-// â”€â”€ Haversine distance between two [lat, lng] points in meters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Haversine distance between two [lat, lng] points in meters ──────────────
 function haversine([lat1, lng1], [lat2, lng2]) {
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -15,7 +15,7 @@ function haversine([lat1, lng1], [lat2, lng2]) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// â”€â”€ Find hazards within radius metres of a polyline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Find hazards within radius metres of a polyline ─────────────────────────
 function hazardsNearRoute(routeCoords, hazards, radius = 150) {
   return hazards.filter((h) => {
     const hLatLng = [h.lat, h.lng];
@@ -23,7 +23,7 @@ function hazardsNearRoute(routeCoords, hazards, radius = 150) {
   });
 }
 
-// â”€â”€ Build a risk score (0â€“100) from nearby hazards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Build a risk score (0–100) from nearby hazards ──────────────────────────
 const ISSUE_RISK = {
   pothole: 15, road_crack: 12, waterlogging: 18,
   streetlight: 20, garbage: 8, sewer: 16, other: 10,
@@ -34,7 +34,7 @@ function calcRouteRisk(nearbyHazards) {
   return Math.min(Math.round(raw * 1.5), 95);
 }
 
-// â”€â”€ Geocode a place name â†’ { lat, lng } via Nominatim â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Geocode a place name → { lat, lng } via Nominatim ───────────────────────
 async function geocode(query) {
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
   const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
@@ -43,7 +43,7 @@ async function geocode(query) {
   return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
 }
 
-// â”€â”€ Fetch walking routes from OSRM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Fetch walking routes from OSRM ──────────────────────────────────────────
 async function fetchRoutes(from, to) {
   const url = `https://router.project-osrm.org/route/v1/foot/${from.lng},${from.lat};${to.lng},${to.lat}?alternatives=true&geometries=geojson&overview=full&steps=false`;
   const res = await fetch(url);
@@ -53,7 +53,7 @@ async function fetchRoutes(from, to) {
   return data.routes;
 }
 
-// â”€â”€ Route metadata (label, colour) per rank after risk-sort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Route metadata (label, colour) per rank after risk-sort ─────────────────
 const ROUTE_META = [
   { label: 'Route 1', tag: 'LOWEST RISK', colour: '#10d48e' },
   { label: 'Route 2', tag: 'BALANCED',    colour: '#f59e0b' },
@@ -76,12 +76,12 @@ const SafeRoute = () => {
   const [routes,  setRoutes]  = useState([]);
   const [selected, setSelected] = useState(0);
 
-  // â”€â”€ Init map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Init map ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!mapInst.current && mapRef.current && !mapRef.current._leaflet_id) {
       const map = L.map(mapRef.current, { zoomControl: false }).setView([28.6139, 77.2090], 12);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: 'Â© CARTO',
+        attribution: '© CARTO',
       }).addTo(map);
       L.control.zoom({ position: 'topright' }).addTo(map);
       mapInst.current = map;
@@ -96,7 +96,7 @@ const SafeRoute = () => {
     layersRef.current = [];
   };
 
-  // â”€â”€ Fetch UrbanPulse hazard reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Fetch UrbanPulse hazard reports ───────────────────────────────────────
   const fetchHazards = async () => {
     try {
       const res = await fetch('https://urbanpulse-guardian-ai.onrender.com/api/reports?limit=200');
@@ -111,7 +111,7 @@ const SafeRoute = () => {
     } catch { return []; }
   };
 
-  // â”€â”€ Analyze routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Analyze routes ────────────────────────────────────────────────────────
   const analyzeRoutes = async () => {
     if (status === 'analyzing') return;
     setStatus('analyzing'); setError(''); setRoutes([]); clearLayers();
@@ -166,7 +166,7 @@ const SafeRoute = () => {
         color: route.meta.colour, weight: idx === 0 ? 7 : 4,
         opacity: idx === 0 ? 1 : 0.35, dashArray: idx === 0 ? null : '10,7',
       }).addTo(mapInst.current).bindPopup(
-        `<div style="padding:4px"><strong style="color:${route.meta.colour}">${route.meta.label} â€” ${route.meta.tag}</strong><br>` +
+        `<div style="padding:4px"><strong style="color:${route.meta.colour}">${route.meta.label} — ${route.meta.tag}</strong><br>` +
         `${route.distLabel} Â· ${route.etaLabel}<br>Risk: ${route.risk}/100 Â· ${route.hazardCount} hazard(s)</div>`
       );
       layersRef.current.push(poly);
@@ -178,7 +178,7 @@ const SafeRoute = () => {
       className: '', iconSize: [14, 14],
     });
     layersRef.current.push(
-      L.marker([from.lat, from.lng], { icon: mkIcon('var(--cyan)',   'var(--cyan)'  ) }).addTo(mapInst.current).bindPopup('ðŸ“ Start'),
+      L.marker([from.lat, from.lng], { icon: mkIcon('var(--cyan)',   'var(--cyan)'  ) }).addTo(mapInst.current).bindPopup('📍 Start'),
       L.marker([to.lat,   to.lng  ], { icon: mkIcon('var(--yellow)', 'var(--yellow)') }).addTo(mapInst.current).bindPopup('<div style="display:flex;align-items:center;gap:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Destination</div>')
     );
 
@@ -189,7 +189,7 @@ const SafeRoute = () => {
     allNearby.slice(0, 40).forEach((h) => {
       layersRef.current.push(
         L.circleMarker([h.lat, h.lng], { radius: 8, color: '#ff3d5a', fillColor: '#ff3d5a', fillOpacity: 0.2, weight: 2 })
-          .addTo(mapInst.current).bindPopup(`âš ï¸ ${(h.issue_type || 'hazard').replace('_', ' ')}`)
+          .addTo(mapInst.current).bindPopup(`⚠️ ${(h.issue_type || 'hazard').replace('_', ' ')}`)
       );
     });
 
@@ -215,14 +215,14 @@ const SafeRoute = () => {
     if (r >= 30) return { label: 'Lower risk',  col: 'var(--yellow)' };
     return             { label: 'Low risk',     col: 'var(--green)'  };
   };
-  const tips = { woman: ['ðŸ“± Share live location with trusted contact', 'ðŸ’¡ Stay on well-lit roads', 'ðŸš¶ Walk confidently', 'ðŸ“ž Emergency: 1091'], student: ['ðŸ‘¥ Travel in groups', 'ðŸšŒ Use public transport', 'ðŸ“± Inform someone of route', 'â° Avoid late night travel alone'], elderly: ['ðŸšŒ Prefer main roads', 'ðŸ‘¥ Travel during peak hours', 'ðŸ¥ Note hospitals en-route', 'ðŸ“± Keep family informed'] };
+  const tips = { woman: ['📍 Share live location with trusted contact', '💡 Stay on well-lit roads', '🚶 Walk confidently', '🚨 Emergency: 1091'], student: ['👥 Travel in groups', '🚌 Use public transport', '📍 Inform someone of route', 'â° Avoid late night travel alone'], elderly: ['🚌 Prefer main roads', '👥 Travel during peak hours', 'ðŸ¥ Note hospitals en-route', '📍 Keep family informed'] };
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-var(--nav-h))] mt-[var(--nav-h)] overflow-hidden">
       {/* Sidebar */}
       <div className="w-full md:w-[400px] shrink-0 bg-bg-card2 border-r border-border overflow-y-auto p-6 flex flex-col gap-[18px]">
         <div>
-          <div className="font-display text-[1.2rem] font-extrabold mb-1">ðŸ›¡ï¸ Safe Route AI</div>
+          <div className="font-display text-[1.2rem] font-extrabold mb-1">🛡️ Safe Route AI</div>
           <div className="text-[0.82rem] text-text2">Real route alternatives with UrbanPulse hazard overlay</div>
         </div>
 
@@ -254,7 +254,7 @@ const SafeRoute = () => {
 
         <div>
           <div className="form-group mb-4">
-            <label className="form-label">ðŸ“ Current Location</label>
+            <label className="form-label">📍 Current Location</label>
             <input className="form-input" value={fromLoc} onChange={(e) => setFromLoc(e.target.value)} placeholder="e.g. Connaught Place, Delhi" />
           </div>
           <div className="form-group mb-0">
@@ -264,7 +264,7 @@ const SafeRoute = () => {
         </div>
 
         <button className="btn btn-primary w-full" onClick={analyzeRoutes} disabled={status === 'analyzing'}>
-          ðŸ” Find Safe Route
+          📍 Find Safe Route
         </button>
 
         {status === 'analyzing' && (
@@ -277,7 +277,7 @@ const SafeRoute = () => {
 
         {status === 'error' && (
           <div className="bg-[rgba(255,61,90,0.08)] border border-[rgba(255,61,90,0.2)] rounded-xl p-4 text-[0.85rem] text-red">
-            âš ï¸ {error}
+            ⚠️ {error}
           </div>
         )}
 
@@ -304,7 +304,7 @@ const SafeRoute = () => {
                   )}
                   <div className="flex items-center justify-between mb-3">
                     <div>
-                      <div className="font-display text-[0.95rem] font-extrabold" style={{ color: c }}>{route.meta.label} â€” {route.meta.tag}</div>
+                      <div className="font-display text-[0.95rem] font-extrabold" style={{ color: c }}>{route.meta.label} — {route.meta.tag}</div>
                       <div className="text-[0.75rem] text-text2 mt-0.5">{route.distLabel} Â· {route.etaLabel} walk</div>
                     </div>
                     <div className="text-right">
@@ -327,7 +327,7 @@ const SafeRoute = () => {
                   </div>
                   {route.hazardCount > 0 ? (
                     <div className="mt-2.5 p-2 rounded-lg text-[0.75rem]" style={{ backgroundColor: `${c}14`, color: c }}>
-                      âš ï¸ {route.hazardCount} reported hazard{route.hazardCount > 1 ? 's' : ''} within 150 m â€” lower reported risk than other options
+                      ⚠️ {route.hazardCount} reported hazard{route.hazardCount > 1 ? 's' : ''} within 150 m — lower reported risk than other options
                     </div>
                   ) : (
                     <div className="mt-2.5 p-2 bg-[rgba(16,212,142,0.08)] rounded-lg text-[0.75rem] text-green">
