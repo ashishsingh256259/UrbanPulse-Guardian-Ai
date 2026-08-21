@@ -54,10 +54,10 @@ export const AuthProvider = ({ children }) => {
       }
     }
     
-    const API = import.meta.env.VITE_API_URL || 'https://urbanpulse-guardian-ai.onrender.com';
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://urbanpulse-guardian-ai.onrender.com';
     let res, data;
     try {
-      res = await fetch(API + endpoint, opts);
+      res = await fetch(API_BASE_URL + endpoint, opts);
       data = await res.json();
     } catch (e) {
       throw new Error('Unable to connect to the server. Please try again.');
