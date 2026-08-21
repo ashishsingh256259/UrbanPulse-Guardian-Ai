@@ -78,11 +78,13 @@ OR if no issue:
         const mimeMap = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
         const mimeType = mimeMap[ext] || 'image/jpeg';
         
-        console.log(`[DEV] AI analysis request received. MimeType: ${mimeType}, Size: ${imageBuffer.length} bytes`);
-        console.log(`[DEV] Starting Gemini request with model: gemini-3.6-flash...`);
+        console.log(`[DEV] Gemini response received. Parsing JSON...`);
+
+        const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+        console.log(`[DEV] Starting Gemini request with model: ${modelName}...`);
 
         const response = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
+            model: modelName,
             contents: [
                 {
                     role: 'user',

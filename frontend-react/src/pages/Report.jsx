@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const Report = () => {
-  const { user, login } = useAuth(); // using login to update user state if needed
+  const { user, login, apiCall } = useAuth(); // using login to update user state if needed
   const navigate = useNavigate();
   
   const [step, setStep] = useState(1);

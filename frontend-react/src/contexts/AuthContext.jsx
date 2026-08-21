@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
       }
     }
     
-    const API = import.meta.env.VITE_API_URL || 'https://urbanpulse-guardian-ai.onrender.com';
+    const API = import.meta.env.VITE_API_URL || '';
     let res, data;
     try {
       res = await fetch(API + endpoint, opts);

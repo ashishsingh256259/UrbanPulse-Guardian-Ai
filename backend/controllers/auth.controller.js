@@ -149,10 +149,16 @@ exports.getMe = async (req, res, next) => {
 
 const admin = require('firebase-admin');
 
-if (!admin.apps.length) {
+if (admin && admin.apps && !admin.apps.length) {
     admin.initializeApp({
         projectId: process.env.FIREBASE_PROJECT_ID || "urbanpulseguardian"
     });
+} else if (admin && !admin.apps) {
+     try {
+         admin.initializeApp({
+             projectId: process.env.FIREBASE_PROJECT_ID || "urbanpulseguardian"
+         });
+     } catch (e) {}
 }
 
 exports.googleAuth = async (req, res, next) => {
