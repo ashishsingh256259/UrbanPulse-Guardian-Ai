@@ -169,13 +169,47 @@ exports.analyzePreview = async (req, res, next) => {
     }
 };
 
+exports.analyzeScannerFrame = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'Please upload an image frame' });
+        }
+        const imagePath = req.file.path;
+
+        let aiResult;
+        try {
+            aiResult = await analyzeImageWithAI(imagePath, null);
+        } catch (e) {
+            try { fs.unlinkSync(imagePath); } catch (_) {}
+            return res.status(500).json({
+                success: false,
+                message: 'AI analysis failed for this frame.',
+                error: e.message
+            });
+        }
+
+        try { fs.unlinkSync(imagePath); } catch (_) {}
+
+        // Map AI result specifically for RoadScanner JSON response schema
+        res.json({
+            issueDetected: aiResult.issue_detected,
+            issueType: aiResult.detected,
+            confidence: aiResult.confidence,
+            severity: aiResult.severity || 'Low',
+            description: aiResult.explanation
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 exports.createReport = async (req, res, next) => {
     try {
         if (!req.file) {
             return res.status(400).json({ success: false, message: 'Please upload an image' });
         }
         
-        const { lat, lng, address, issue_type, landmark = "", description = "" } = req.body;
+        const { lat, lng, address, issue_type, landmark = "", description = "", source = "manual" } = req.body;
         const latNum = parseFloat(lat);
         const lngNum = parseFloat(lng);
 
@@ -215,7 +249,8 @@ exports.createReport = async (req, res, next) => {
             ai_detected: aiResult.issue_detected ? detectedType : null,
             risk_score: risk,
             image_url: imageUrl,
-            points_awarded: points
+            points_awarded: points,
+            source
         });
 
         let updatedUser = null;

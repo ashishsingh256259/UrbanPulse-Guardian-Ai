@@ -20,6 +20,7 @@ const ReportSchema = new mongoose.Schema({
     status: { type: String, default: 'pending', index: 1 },
     points_awarded: { type: Number, default: 0 },
     assigned_team: { type: String },
+    source: { type: String, default: 'manual' },
     resolved_at: { type: Date }
 }, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } });
 

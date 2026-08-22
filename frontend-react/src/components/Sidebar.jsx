@@ -30,6 +30,9 @@ const Sidebar = () => {
         <Link to="/emergency" className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[0.85rem] font-medium transition-all mb-0.5 ${activePage === 'emergency' ? 'bg-[rgba(0,212,255,0.08)] text-cyan' : 'text-text2 hover:bg-[rgba(255,255,255,0.04)] hover:text-text'}`}>
           🚨 Emergency Response Hub
         </Link>
+        <Link to="/road-scanner" className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[0.85rem] font-medium transition-all mb-0.5 ${activePage === 'road-scanner' ? 'bg-[rgba(0,212,255,0.08)] text-cyan' : 'text-text2 hover:bg-[rgba(255,255,255,0.04)] hover:text-text'}`}>
+          📷 AI Road Scanner
+        </Link>
       </div>
     </div>
   );

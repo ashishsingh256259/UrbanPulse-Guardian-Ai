@@ -166,7 +166,10 @@ const Municipal = () => {
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-[0.9rem]">{(r.issue_type || '').replace(/_/g, ' ').toUpperCase()}{r.landmark ? ` — ${r.landmark}` : ''}</div>
           <div className="text-[0.75rem] text-text2 mt-1">{r.location?.address || 'Location recorded'} · {timeAgo(r.created_at)}</div>
-          <div className="mt-1.5 flex gap-1.5 items-center">{statusBadge(r.status)}</div>
+          <div className="mt-1.5 flex gap-1.5 items-center">
+            {statusBadge(r.status)}
+            {r.source === 'road_scanner' && <span className="px-2 py-0.5 rounded-[10px] text-[0.62rem] font-bold bg-[rgba(139,92,246,0.2)] text-purple uppercase tracking-wider">📷 AI Road Scanner</span>}
+          </div>
         </div>
         <div className="text-right shrink-0">
           <div className="font-display text-[1.4rem] font-extrabold" style={{ color: riskColor(r.risk_score || 0) }}>{Math.round(r.risk_score || 0)}</div>
@@ -184,7 +187,10 @@ const Municipal = () => {
     return (
       <div className="bg-bg-card border border-border rounded-xl p-6 mt-5 animate-fade-in">
         <div className="flex justify-between items-center mb-4">
-          <div className="font-display text-[1.1rem] font-extrabold">{issueEmoji(r.issue_type)} Issue Details — #{r.id?.slice(-6)}</div>
+          <div className="font-display text-[1.1rem] font-extrabold">
+            {issueEmoji(r.issue_type)} Issue Details — #{r.id?.slice(-6)}
+            {r.source === 'road_scanner' && <span className="ml-3 px-2 py-1 rounded-[10px] text-[0.7rem] font-bold bg-[rgba(139,92,246,0.2)] text-purple uppercase tracking-wider align-middle">📷 AI Road Scanner</span>}
+          </div>
           <button className="bg-transparent border-none text-text2 cursor-pointer text-xl hover:text-text" onClick={() => setSelectedReport(null)}>✕</button>
         </div>
 

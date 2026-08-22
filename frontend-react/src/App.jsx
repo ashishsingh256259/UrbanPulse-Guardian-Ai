@@ -12,6 +12,7 @@ import Heatmap from './pages/Heatmap';
 import Rewards from './pages/Rewards';
 import Report from './pages/Report';
 import SafeRoute from './pages/SafeRoute';
+import RoadScanner from './pages/RoadScanner';
 
 function App() {
   const { loading } = useAuth();
@@ -33,6 +34,7 @@ function App() {
         <Route path="/rewards" element={<Rewards />} />
         <Route path="/report" element={<Report />} />
         <Route path="/saferoute" element={<SafeRoute />} />
+        <Route path="/road-scanner" element={<RoadScanner />} />
         {/* Fallback for now */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
